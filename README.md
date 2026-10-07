@@ -59,3 +59,105 @@ document.getElementById("project-list").append(...projets.map(creerProjet));
 Ajouter un projet revient à ajouter un objet au tableau.
 
 ![Projects](screenshots/04-projects.png)
+
+## Étape 10 – Dockerfile (Nginx)
+
+Fichier `Dockerfile` à la racine du projet :
+
+```dockerfile
+# Image officielle Nginx, version légère (Alpine Linux)
+FROM nginx:alpine
+
+# Copie du site statique dans le dossier servi par Nginx
+COPY index.html style.css script.js /usr/share/nginx/html/
+
+# Nginx écoute sur le port 80 dans le conteneur
+EXPOSE 80
+```
+
+Explication :
+
+- `FROM nginx:alpine` : l'image de départ est Nginx sur Alpine Linux, une base très légère (quelques dizaines de Mo).
+- `COPY ...` : les trois fichiers du portfolio sont copiés dans `/usr/share/nginx/html/`, le dossier que Nginx sert par défaut. Le portfolio est un site statique, il n'y a donc rien à compiler.
+- `EXPOSE 80` : indique que le conteneur écoute sur le port 80. La publication vers la machine se fait ensuite avec `-p` ou Docker Compose.
+
+Un fichier `.dockerignore` exclut du build ce qui n'est pas utile au site (`.git`, `screenshots`, `README.md`, `Dockerfile`, `docker-compose.yml`).
+
+![Dockerfile](screenshots/05-dockerfile.png)
+
+## Étape 11 – Construction de l'image `cv-docker`
+
+```bash
+docker build -t cv-docker .
+docker images
+```
+
+`-t cv-docker` donne le nom `cv-docker` à l'image (tag `latest` par défaut) et `.` indique que le contexte de build est le dossier courant.
+
+![Build de l'image](screenshots/06-docker-build.png)
+
+## Étape 12 – Exécution du conteneur
+
+```bash
+docker run -d --name cv -p 8081:80 cv-docker
+docker ps
+```
+
+- `-d` : le conteneur tourne en arrière-plan ;
+- `--name cv` : nom du conteneur ;
+- `-p 8081:80` : le port 8081 de la VM est relié au port 80 de Nginx dans le conteneur.
+
+Résultat de `docker ps` :
+
+```
+CONTAINER ID   IMAGE       COMMAND                  CREATED         STATUS         PORTS                                         NAMES
+ae8f56711996   cv-docker   "/docker-entrypoint.…"   7 seconds ago   Up 6 seconds   0.0.0.0:8081->80/tcp, [::]:8081->80/tcp       cv
+```
+
+![docker run et docker ps](screenshots/07-docker-run.png)
+
+Accès depuis la machine physique : `http://localhost:8081` (redirection de port VirtualBox 8081 → 8081 de la VM).
+
+![Portfolio servi par Nginx](screenshots/08-portfolio-docker.png)
+
+Preuve que c'est bien Nginx qui répond (version et journaux d'accès du conteneur) :
+
+```bash
+docker exec cv nginx -v
+docker logs --tail 5 cv
+```
+
+![Version de Nginx et journaux d'accès](screenshots/08b-nginx-logs.png)
+
+En-tête de réponse HTTP vu dans les outils du navigateur (`Server: nginx/1.31.6`) :
+
+![En-tête Server: nginx](screenshots/08d-nginx-header.png)
+
+## Étape 13 – Déploiement avec Docker Compose
+
+Fichier `docker-compose.yml` :
+
+```yaml
+services:
+  cv:
+    build: .
+    image: cv-docker
+    container_name: cv-compose
+    ports:
+      - "8081:80"
+    restart: unless-stopped
+```
+
+Le conteneur de l'étape 12 est d'abord supprimé pour libérer le port 8081, puis le service est lancé :
+
+```bash
+docker rm -f cv
+docker compose up -d
+docker compose ps
+```
+
+`restart: unless-stopped` relance le conteneur après un redémarrage de la VM.
+
+![docker compose up et ps](screenshots/09-docker-compose.png)
+
+![Portfolio déployé avec Compose](screenshots/10-portfolio-compose.png)

@@ -1,0 +1,8 @@
+services:
+  cv:
+    build: .
+    image: cv-docker
+    container_name: cv-compose
+    ports:
+      - "8081:80"
+    restart: unless-stopped
