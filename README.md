@@ -161,3 +161,26 @@ docker compose ps
 ![docker compose up et ps](screenshots/09-docker-compose.png)
 
 ![Portfolio déployé avec Compose](screenshots/10-portfolio-compose.png)
+
+## Étape 14 – Publication sur GitHub via SSH
+
+Dépôt GitHub mis à jour : https://github.com/Amal356/cv-devsecops
+
+Commandes Git utilisées dans la VM :
+
+```bash
+cd ~/cv-devsecops
+git status
+git add .
+git commit -m "Dockerisation : Dockerfile, docker-compose et documentation"
+git push
+git log --oneline
+```
+
+Le dépôt distant utilise SSH (`git@github.com:Amal356/cv-devsecops.git`), configuré à l'étape 6 : aucun mot de passe n'est demandé au push.
+
+![git push](screenshots/11-git-push-final.png)
+
+Contenu du dépôt sur GitHub après le push :
+
+![Dépôt GitHub](screenshots/12-depot-github.png)
