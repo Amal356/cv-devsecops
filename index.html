@@ -3,65 +3,85 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Amal Jemli – CV</title>
+  <title>Amal Jemli – DevSecOps Portfolio</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="cv">
-    <aside class="side">
-      <h1>Amal Jemli</h1>
-      <p class="role">Master DevOps et Cloud Computing</p>
+  <header class="nav">
+    <a class="brand" href="#about">Amal Jemli</a>
+    <nav aria-label="Navigation principale">
+      <a href="#about">About</a>
+      <a href="#skills">Skills</a>
+      <a href="#devsecops">DevSecOps</a>
+      <a href="#projects">Projects</a>
+      <a href="#experience">Experience</a>
+      <a href="#contact">Contact</a>
+    </nav>
+    <button id="theme" type="button" aria-label="Changer de thème">Clair / sombre</button>
+  </header>
 
-      <ul class="contact">
-        <li>Tozeur, Tunisie</li>
-        <li><a href="mailto:jemliamal03@gmail.com" id="mail">jemliamal03@gmail.com</a></li>
-        <li><a href="https://github.com/Amal356">github.com/Amal356</a></li>
+  <main>
+    <section id="about" class="hero">
+      <h1>Étudiante en Master DevOps et Cloud Computing</h1>
+      <p>Je m'appelle Amal Jemli, j'étudie à l'ISET Tozeur. Je construis des applications web (React, Node.js, Python) et j'apprends à les livrer de façon fiable : conteneurs, intégration continue et infrastructure automatisée.</p>
+      <p><a class="btn" href="#projects">Voir mes projets</a></p>
+    </section>
+
+    <section id="skills">
+      <h2>Skills</h2>
+      <h3>Développement</h3>
+      <p class="tags"><span>HTML5</span><span>CSS3</span><span>JavaScript</span><span>React</span><span>Angular</span><span>Flutter</span><span>Node.js</span><span>Express.js</span><span>Flask</span><span>Spring Boot</span><span>PostgreSQL</span><span>MySQL</span></p>
+      <h3>Cloud et outils</h3>
+      <p class="tags"><span>Linux</span><span>Bash</span><span>GitHub Actions</span><span>GitLab CI</span><span>AWS / Azure (notions)</span><span>Prometheus</span><span>Grafana</span></p>
+    </section>
+
+    <section id="devsecops">
+      <h2>DevSecOps Skills</h2>
+      <p class="lead">Les technologies de ce projet. Git, Docker et Jenkins sont pratiqués dans ce TP, les autres sont au programme du master.</p>
+      <ul class="tools">
+        <li><strong>Git</strong><span>Versionner le code et publier sur GitHub en SSH.</span><em class="done">Pratiqué dans ce projet</em></li>
+        <li><strong>Docker</strong><span>Empaqueter le portfolio dans une image Nginx.</span><em class="done">Pratiqué dans ce projet</em></li>
+        <li><strong>Jenkins</strong><span>Serveur d'intégration continue installé en service.</span><em class="done">Pratiqué dans ce projet</em></li>
+        <li><strong>Kubernetes</strong><span>Orchestrer des conteneurs.</span><em>Au programme</em></li>
+        <li><strong>Ansible</strong><span>Configurer des serveurs de façon reproductible.</span><em>Au programme</em></li>
+        <li><strong>Terraform</strong><span>Décrire l'infrastructure en code.</span><em>Au programme</em></li>
+        <li><strong>Argo CD</strong><span>Déployer en continu depuis Git.</span><em>Au programme</em></li>
       </ul>
+    </section>
 
-      <h2>DevOps &amp; Cloud</h2>
-      <p class="tags"><span>Docker</span><span>Kubernetes</span><span>Jenkins</span><span>GitHub Actions</span><span>GitLab CI</span><span>Terraform</span><span>Ansible</span><span>Linux</span><span>Bash</span><span>Git</span><span>Prometheus</span><span>Grafana</span></p>
+    <section id="projects">
+      <h2>Projects</h2>
+      <div id="project-list"></div>
+    </section>
 
-      <h2>Développement</h2>
-      <p class="tags"><span>HTML5</span><span>CSS3</span><span>JavaScript</span><span>React</span><span>Angular</span><span>Flutter</span><span>Node.js</span><span>Spring Boot</span><span>PostgreSQL</span><span>MySQL</span></p>
-
-      <h2>Qualités</h2>
-      <p class="plain">Communication, travail d'équipe, esprit d'analyse, autonomie, adaptabilité.</p>
-
-      <button id="theme" type="button" aria-label="Changer de thème">Thème clair / sombre</button>
-    </aside>
-
-    <section class="main">
-      <h2>Expérience</h2>
+    <section id="experience">
+      <h2>Experience</h2>
       <article>
-        <h3>Stagiaire Full Stack &amp; analyse de données</h3>
+        <h3>Stagiaire Full Stack et analyse de données</h3>
         <p class="meta">Desert Navigation, Tozeur · 02/2025 – 05/2025</p>
-        <p>Plateforme d'analyse des réservations Airbnb et Booking : traitement des données avec Python, stockage PostgreSQL, interface React et Node, authentification JWT, prédiction simple des tendances.</p>
+        <p>Traitement de fichiers Excel avec Python, stockage PostgreSQL, interface React et Node, authentification JWT.</p>
       </article>
       <article>
         <h3>Stagiaire en développement Web</h3>
         <p class="meta">Société Itqan, Tozeur · 02/2023 – 03/2023</p>
-        <p>Site dynamique de visualisation et téléchargement de films et séries : interfaces responsives en HTML, CSS et JavaScript, logique backend en PHP.</p>
+        <p>Interfaces responsives en HTML, CSS et JavaScript, logique backend en PHP.</p>
       </article>
       <article>
         <h3>Stagiaire en initiation au développement Web</h3>
         <p class="meta">Société Itqan, Tozeur · 02/2022 – 03/2022</p>
-        <p>Site vitrine statique avec HTML5, CSS3 et Bootstrap, maquettes et présentation du projet à l'équipe.</p>
+        <p>Site vitrine avec HTML5, CSS3 et Bootstrap.</p>
       </article>
+    </section>
 
-      <h2>Formation</h2>
-      <article>
-        <h3>Master professionnel en DevOps et Cloud Computing</h3>
-        <p class="meta">ISET Tozeur · 2025 – 2027</p>
-      </article>
-      <article>
-        <h3>Licence appliquée en Technologies de l'Informatique</h3>
-        <p class="meta">ISET Tozeur · 2021 – 2025</p>
-      </article>
-
-      <h2>Certificat</h2>
-      <p class="plain">Design graphique</p>
+    <section id="contact">
+      <h2>Contact</h2>
+      <p>Une question, une proposition de stage ? Écrivez-moi.</p>
+      <p><a class="btn" href="mailto:jemliamal03@gmail.com">jemliamal03@gmail.com</a></p>
+      <p class="meta"><a href="https://github.com/Amal356">github.com/Amal356</a> · Tozeur, Tunisie</p>
     </section>
   </main>
+
+  <footer><p>© 2026 Amal Jemli. Servi par Nginx dans un conteneur Docker.</p></footer>
   <script src="script.js"></script>
 </body>
 </html>
