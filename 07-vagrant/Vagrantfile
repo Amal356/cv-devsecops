@@ -1,0 +1,22 @@
+# Étape 17 – VM configurée automatiquement : nom, IP privée, mémoire, CPU
+# Émulation logicielle (QEMU sans KVM) : VirtualBox plante avec KVM imbriqué sur CPU AMD
+# Démarrage UEFI (OVMF) déclaré avec lv.loader
+Vagrant.configure("2") do |config|
+  config.vm.box = "cloud-image/ubuntu-24.04"
+  config.vm.boot_timeout = 900
+
+  config.vm.define "devsecops-vm" do |vm|
+    vm.vm.hostname = "devsecops-vm"
+    vm.vm.network "private_network", ip: "192.168.50.10"
+
+    vm.vm.provider "libvirt" do |lv|
+      lv.default_prefix = ""
+      lv.driver = "qemu"
+      lv.cpu_mode = "custom"
+      lv.cpu_model = "qemu64"
+      lv.memory = 1536
+      lv.cpus = 2
+      lv.loader = "/usr/share/ovmf/OVMF.fd"
+    end
+  end
+end
