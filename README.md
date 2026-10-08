@@ -2,6 +2,16 @@
 
 Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 
+## Sommaire
+
+- [Étape 1 – Ubuntu Server 26.04 et accès SSH sécurisé](01-ubuntu-ssh/README.md)
+- [Étape 2 – Test SSH depuis la machine physique](02-test-ssh/README.md)
+- [Étape 3 – Installation de Docker](03-docker/README.md)
+- [Étape 4 – Installation de Jenkins](04-jenkins/README.md)
+- Étapes 5 et 7 à 14 – Portfolio et Docker : ci-dessous
+- [Étape 6 – Push GitHub via SSH](06-github-ssh/README.md)
+- [Étapes 15 à 17 – Vagrant](07-vagrant/README.md)
+
 Le mini CV de l'étape 5 a évolué en petite application de portfolio (HTML5, CSS3, JavaScript).
 
 ## Étape 5 – Mini CV One Page
