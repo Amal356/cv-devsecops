@@ -15,6 +15,7 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 Le mini CV de l'étape 5 a évolué en petite application de portfolio (HTML5, CSS3, JavaScript).
 
 ## Étape 5 – Mini CV One Page
+Code de la première version, avant son évolution en portfolio : commit [7702fbd](https://github.com/Amal356/cv-devsecops/tree/7702fbd).
 
 ![Mini CV](screenshots/01-cv.png)
 
@@ -167,6 +168,13 @@ docker compose ps
 ```
 
 `restart: unless-stopped` relance le conteneur après un redémarrage de la VM.
+
+Résultat de `docker compose ps` :
+
+```
+NAME         IMAGE       COMMAND                  SERVICE   CREATED          STATUS          PORTS
+cv-compose   cv-docker   "/docker-entrypoint.…"   cv        20 minutes ago   Up 20 minutes   0.0.0.0:8081->80/tcp, [::]:8081->80/tcp
+```
 
 ![docker compose up et ps](screenshots/09-docker-compose.png)
 
