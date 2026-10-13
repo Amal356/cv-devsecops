@@ -19,6 +19,7 @@ ssh amal@127.0.0.1 -p 2222
 ```
 
 À la première connexion, l'empreinte de la clé du serveur (ED25519) est acceptée avec `yes`, puis le mot de passe de l'utilisateur est demandé.
+> **Remarque :** ce test a été fait juste après l'installation, avant le durcissement SSH. Depuis, l'authentification par mot de passe est désactivée et la connexion se fait uniquement par clé, sans mot de passe (voir [Étape 1](../01-ubuntu-ssh/README.md)).
 
 ## Résultat
 
