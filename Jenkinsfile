@@ -19,5 +19,16 @@ pipeline {
                 sh 'ls portfolio-next'
             }
         }
+
+        stage('Install') {
+            steps {
+                dir('portfolio-next') {
+                    sh 'node -v'
+                    sh 'npm -v'
+                    // npm ci installe exactement les versions de package-lock.json
+                    sh 'npm ci'
+                }
+            }
+        }
     }
 }
