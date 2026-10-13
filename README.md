@@ -12,6 +12,7 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 - [Étape 6 – Push GitHub via SSH](06-github-ssh/README.md)
 - [Étapes 15 à 17 – Vagrant](07-vagrant/README.md)
 - [Étapes 18 à 21 – Portfolio Next.js](08-nextjs/README.md)
+- [Étapes 22 à 24 – Pipeline Jenkins](09-jenkins-pipeline/README.md)
 
 Le mini CV de l'étape 5 a évolué en petite application de portfolio (HTML5, CSS3, JavaScript).
 
