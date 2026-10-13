@@ -6,8 +6,25 @@
 - Nom de la VM : `ubuntu-server-26`
 - ISO : `ubuntu-26.04.1-live-server-amd64.iso`
 - OS : Linux / Ubuntu (64-bit)
+- Mémoire : 4096 Mo (augmentée à 4 Go pour la partie IV – Vagrant)
+- Processeurs : 2 CPU (virtualisation imbriquée VT-x/AMD-V activée pour Vagrant)
+- Disque : 25 Go (VDI, allocation dynamique)
+- Réseau : NAT avec redirection de ports
+- Option « Install OpenSSH server » cochée pendant la création du système
 
 ![Création de la VM](screenshots/01-creation-vm.png)
+
+## Redirection de ports (VirtualBox)
+
+En mode NAT, la VM est injoignable directement depuis la machine physique. Des règles de redirection sont donc ajoutées dans Configuration → Réseau → Avancé → Redirection de ports :
+
+| Nom | Port hôte | Port invité | Usage |
+|---|---|---|---|
+| SSH | 2222 | 22 | Accès SSH depuis la machine physique |
+| http-8080 | 8080 | 8080 | Jenkins |
+| http-8081 | 8081 | 8081 | Portfolio (Docker) |
+
+![Redirection de ports](screenshots/00-redirection-ports.png)
 
 ## Première connexion
 
