@@ -4,6 +4,8 @@ pipeline {
     options {
         // On fait le checkout nous-mêmes dans le stage "Checkout"
         skipDefaultCheckout()
+        // Un seul build à la fois
+        disableConcurrentBuilds()
     }
 
     triggers {
@@ -29,6 +31,24 @@ pipeline {
                     sh 'npm ci'
                 }
             }
+        }
+
+        stage('Build') {
+            steps {
+                dir('portfolio-next') {
+                    // Compilation de l'application Next.js (dossier .next)
+                    sh 'npm run build'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline réussi : le portfolio Next.js est construit.'
+        }
+        failure {
+            echo 'Pipeline en échec : voir le stage en rouge.'
         }
     }
 }
