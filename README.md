@@ -11,6 +11,7 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 - Étapes 5 et 7 à 14 – Portfolio et Docker : ci-dessous
 - [Étape 6 – Push GitHub via SSH](06-github-ssh/README.md)
 - [Étapes 15 à 17 – Vagrant](07-vagrant/README.md)
+- [Étapes 18 à 21 – Portfolio Next.js](08-nextjs/README.md)
 
 Le mini CV de l'étape 5 a évolué en petite application de portfolio (HTML5, CSS3, JavaScript).
 
@@ -208,3 +209,4 @@ Contenu du dépôt sur GitHub après le push :
 ## Partie IV – Vagrant (étapes 15 à 17)
 
 Toute la partie Vagrant (installation, Vagrantfile, vagrant ssh, configuration automatique) est documentée ici : [07-vagrant/README.md](07-vagrant/README.md)
+- [Étapes 18 à 21 – Portfolio Next.js](08-nextjs/README.md)
