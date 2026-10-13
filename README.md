@@ -209,4 +209,3 @@ Contenu du dépôt sur GitHub après le push :
 ## Partie IV – Vagrant (étapes 15 à 17)
 
 Toute la partie Vagrant (installation, Vagrantfile, vagrant ssh, configuration automatique) est documentée ici : [07-vagrant/README.md](07-vagrant/README.md)
-- [Étapes 18 à 21 – Portfolio Next.js](08-nextjs/README.md)
