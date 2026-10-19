@@ -1,25 +1,21 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { projects, getProject } from "@/data/projects";
+import { getProject } from "@/lib/api";
+import DataSource from "@/components/DataSource";
 
-// Seuls les slugs du tableau existent : les autres renvoient une erreur 404
-export const dynamicParams = false;
-
-// Génère une page statique par projet au moment du build
-export function generateStaticParams() {
-  return projects.map((p) => ({ slug: p.slug }));
-}
+// Les projets viennent de l'API au moment de la requête :
+// un slug inconnu de l'API renvoie la page 404.
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const projet = getProject(slug);
+  const { data: projet } = await getProject(slug);
   return { title: projet ? `${projet.titre} – Amal Jemli` : "Projet introuvable" };
 }
 
-// Page /projects/<slug> : détail d'un projet
+// Page /projects/<slug> : détail d'un projet (GET /api/projects/:slug)
 export default async function ProjectPage({ params }) {
   const { slug } = await params;
-  const projet = getProject(slug);
+  const { data: projet, source } = await getProject(slug);
   if (!projet) notFound();
 
   return (
@@ -40,6 +36,7 @@ export default async function ProjectPage({ params }) {
 
       {projet.lien && <p><a href={projet.lien}>Voir le code sur GitHub</a></p>}
 
+      <DataSource source={source} />
       <Link className="back" href="/projects">← Retour aux projets</Link>
     </section>
   );

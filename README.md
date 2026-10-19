@@ -13,6 +13,10 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 - [Étapes 15 à 17 – Vagrant](07-vagrant/README.md)
 - [Étapes 18 à 21 – Portfolio Next.js](08-nextjs/README.md)
 - [Étapes 22 à 24 – Pipeline Jenkins](09-jenkins-pipeline/README.md)
+- [Étapes 25 à 28 – Automatisation avec Ansible](10-ansible/README.md)
+- [Étapes 29 à 35 – API Node.js / Express](11-api-express/README.md)
+- [Étapes 36 et 37 – Variables d'environnement](12-variables-env/README.md)
+- [Étapes 38 à 42 – Dockerisation frontend + API](13-docker-fullstack/README.md)
 
 Le mini CV de l'étape 5 a évolué en petite application de portfolio (HTML5, CSS3, JavaScript).
 

@@ -73,3 +73,9 @@ footer { padding-top: 3rem; padding-bottom: 2rem; color: var(--muted); font-size
 .detail ul { padding-left: 1.2rem; }
 .detail li { margin: .3rem 0; }
 .detail .tags { margin: 1rem 0; }
+
+/* Origine des données (API Express ou fichiers locaux de secours) */
+.source { display: inline-block; margin: 0 0 1rem; padding: .15rem .6rem; border-radius: 4px; font-size: .82rem; font-weight: 600; }
+.source::before { content: "● "; }
+.source-api { background: var(--tag); color: var(--accent); }
+.source-local { border: 1px solid var(--line); color: var(--muted); }

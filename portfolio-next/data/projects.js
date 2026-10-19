@@ -1,5 +1,4 @@
-// Données des projets : chaque objet devient une carte sur la page d'accueil,
-// une ligne sur /projects et une page dédiée sur /projects/<slug>.
+// Copie locale des projets : données de secours si l'API Express (GET /api/projects) est injoignable
 export const projects = [
   {
     slug: "analyse-reservations",
@@ -33,15 +32,17 @@ export const projects = [
     titre: "Infrastructure DevOps sur machine virtuelle",
     periode: "2026 · Master DevOps et Cloud Computing",
     description:
-      "Serveur Ubuntu avec accès SSH par clé, Docker et Jenkins installés en service, portfolio versionné sur GitHub, conteneurisé avec Nginx puis migré vers Next.js.",
+      "Serveur Ubuntu avec accès SSH par clé, Docker et Jenkins installés en service, configuration automatisée avec Ansible, portfolio Next.js alimenté par une API Express et lancé avec Docker Compose.",
     details: [
       "Ubuntu Server 26.04 sous VirtualBox, accès SSH par clé et pare-feu UFW.",
       "Docker et Jenkins installés en tant que services.",
       "Portfolio servi par Nginx dans un conteneur, déployé avec Docker Compose.",
       "Création automatique de VM avec Vagrant (Infrastructure as Code).",
       "Migration du portfolio vers Next.js et premier pipeline Jenkins.",
+      "Configuration des VM automatisée avec Ansible (paquets et Docker).",
+      "API Node.js / Express qui fournit les données du portfolio, frontend et API lancés avec Docker Compose.",
     ],
-    technologies: ["Ubuntu Server", "SSH", "Docker", "Jenkins", "Vagrant", "Next.js"],
+    technologies: ["Ubuntu Server", "SSH", "Docker", "Jenkins", "Vagrant", "Ansible", "Next.js", "Express"],
     lien: "https://github.com/Amal356/cv-devsecops",
   },
 ];

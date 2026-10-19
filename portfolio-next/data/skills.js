@@ -1,3 +1,4 @@
+// Copie locale des compétences : données de secours si l'API Express (GET /api/skills) est injoignable
 // Compétences générales, regroupées par catégorie
 export const skills = [
   {
@@ -13,10 +14,10 @@ export const skills = [
 // Technologies DevSecOps du projet : pratique = true si utilisée dans les TP
 export const devsecopsSkills = [
   { nom: "Git", role: "Versionner le code et publier sur GitHub en SSH.", pratique: true },
-  { nom: "Docker", role: "Empaqueter le portfolio dans une image Nginx.", pratique: true },
+  { nom: "Docker", role: "Conteneuriser le frontend Next.js et l'API Express, lancés avec Docker Compose.", pratique: true },
   { nom: "Jenkins", role: "Pipeline qui récupère, installe et construit le portfolio.", pratique: true },
-  { nom: "Kubernetes", role: "Orchestrer des conteneurs.", pratique: false },
-  { nom: "Ansible", role: "Configurer des serveurs de façon reproductible.", pratique: false },
+  { nom: "Kubernetes", role: "Déployer une application Spring Boot sur K3S (Labs Jenkins).", pratique: true },
+  { nom: "Ansible", role: "Installer des paquets et Docker sur les VM avec des playbooks.", pratique: true },
   { nom: "Terraform", role: "Décrire l'infrastructure en code.", pratique: false },
   { nom: "Argo CD", role: "Déployer en continu depuis Git.", pratique: false },
 ];
