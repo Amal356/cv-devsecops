@@ -16,6 +16,7 @@
         name:
           - ca-certificates
           - curl
+          - python3-debian   # requis par le module deb822_repository
         state: present
         update_cache: true
 
