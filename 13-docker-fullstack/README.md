@@ -103,12 +103,16 @@ CMD ["node", "src/server.js"]
 
 ## Étape 40 – Construction des deux images
 
+K3S, inutile ici, est arrêté pour libérer de la mémoire pendant le build (`sudo systemctl stop k3s`).
+
 ```bash
 cd ~/cv-devsecops
 docker build -t devsecops-api ./api
 docker build -t devsecops-portfolio ./portfolio-next
 docker images | grep devsecops
 ```
+
+Deuxième construction : toutes les étapes sont `CACHED`, le build ne prend qu'une seconde. On voit les trois étapes du Dockerfile du frontend : `deps`, `build` et `runner`.
 
 ![Construction des images](screenshots/01-docker-build.png)
 
@@ -185,13 +189,19 @@ Le frontend joint l'API par son nom de service :
 docker compose -f docker-compose.fullstack.yml exec frontend wget -qO- http://api:4000/api/health
 ```
 
+Résultat : les deux conteneurs sont sur le réseau `portfolio-net` (172.21.0.2 et 172.21.0.3), et le frontend joint l'API par son nom de service `api` :
+
+![Communication dans le réseau Compose](screenshots/04-reseau-compose.png)
+
 Les journaux de l'API montrent les appels faits par le frontend à chaque chargement de page :
 
 ```bash
 docker compose -f docker-compose.fullstack.yml logs api
 ```
 
-![Communication dans le réseau Compose](screenshots/04-reseau-compose.png)
+On y voit le *healthcheck* (`GET /api/health` toutes les 15 secondes), puis les appels `GET /api/projects`, `GET /api/skills` et `GET /api/projects/<slug>` (Next.js précharge les pages de détail des projets).
+
+![Journaux de l'API](screenshots/06-logs-api.png)
 
 Le portfolio sur `http://localhost:3000` affiche les projets et les compétences avec le badge « Données fournies par l'API Express » :
 

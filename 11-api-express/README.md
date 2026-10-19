@@ -321,9 +321,13 @@ cd ~/cv-devsecops/portfolio-next
 API_URL=http://localhost:4000 npm run dev -- -H 0.0.0.0 -p 3000
 ```
 
-Projets lus depuis l'API (le terminal de l'API affiche `GET /api/projects 200`) :
+Projets lus depuis l'API :
 
 ![Projets fournis par l'API](screenshots/06-frontend-projects-api.png)
+
+La page d'accueil assemble les sections : chacune indique la source de ses données.
+
+![Accueil alimenté par l'API](screenshots/06b-accueil-api.png)
 
 Compétences lues depuis l'API (étape 35) :
 

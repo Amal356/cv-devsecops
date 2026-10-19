@@ -11,6 +11,8 @@ Vagrant.configure("2") do |config|
   config.vm.define "ansible-admin" do |admin|
     admin.vm.hostname = "ansible-admin"
     admin.vm.network "private_network", ip: "192.168.56.20"
+    # Port SSH fixe sur Windows (2222 est déjà utilisé par ubuntu-server-26)
+    admin.vm.network "forwarded_port", guest: 22, host: 2201, id: "ssh"
     admin.vm.provider "virtualbox" do |vb|
       vb.name = "ansible-admin"
       vb.memory = 1024
@@ -23,6 +25,7 @@ Vagrant.configure("2") do |config|
   config.vm.define "docker-vm" do |dvm|
     dvm.vm.hostname = "docker-vm"
     dvm.vm.network "private_network", ip: "192.168.56.30"
+    dvm.vm.network "forwarded_port", guest: 22, host: 2202, id: "ssh"
     dvm.vm.provider "virtualbox" do |vb|
       vb.name = "docker-vm"
       vb.memory = 2048
