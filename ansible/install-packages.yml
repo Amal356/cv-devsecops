@@ -1,0 +1,31 @@
+# Premier playbook : installer des paquets Linux sur toutes les VM gérées
+# Lancement : ansible-playbook install-packages.yml -K
+- name: Installer des paquets de base
+  hosts: all
+  become: true          # les tâches s'exécutent avec sudo
+
+  vars:
+    paquets:
+      - curl
+      - git
+      - tree
+
+  tasks:
+    - name: Mettre à jour la liste des paquets (apt update)
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600   # pas de nouvel apt update si le dernier a moins d'une heure
+
+    - name: Installer curl, git et tree
+      ansible.builtin.apt:
+        name: "{{ paquets }}"
+        state: present
+
+    - name: Lire la version de git
+      ansible.builtin.command: git --version
+      register: version_git
+      changed_when: false        # simple lecture : ne modifie rien
+
+    - name: Afficher la version de git
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} : {{ version_git.stdout }}"
