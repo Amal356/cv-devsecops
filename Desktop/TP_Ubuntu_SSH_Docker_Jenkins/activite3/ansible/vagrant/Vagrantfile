@@ -1,0 +1,33 @@
+# Création automatique des 2 VM de la partie VII (Ansible) avec Vagrant + VirtualBox, sous Windows
+#   ansible-admin : VM d'administration, Ansible y sera installé   -> 192.168.56.20
+#   docker-vm     : nouvelle VM, Ansible y installera Docker        -> 192.168.56.30
+# Lancement (PowerShell, dans ce dossier) : vagrant up
+Vagrant.configure("2") do |config|
+  # Ubuntu 24.04 LTS (box Bento, avec les Guest Additions VirtualBox)
+  config.vm.box = "bento/ubuntu-24.04"
+  config.vm.boot_timeout = 600
+
+  # VM d'administration (créée en premier : elle génère la clé SSH d'Ansible)
+  config.vm.define "ansible-admin" do |admin|
+    admin.vm.hostname = "ansible-admin"
+    admin.vm.network "private_network", ip: "192.168.56.20"
+    admin.vm.provider "virtualbox" do |vb|
+      vb.name = "ansible-admin"
+      vb.memory = 1024
+      vb.cpus = 1
+    end
+    admin.vm.provision "shell", path: "scripts/cle-ssh-admin.sh"
+  end
+
+  # Nouvelle VM, sans Docker : c'est le playbook install-docker.yml qui l'installe
+  config.vm.define "docker-vm" do |dvm|
+    dvm.vm.hostname = "docker-vm"
+    dvm.vm.network "private_network", ip: "192.168.56.30"
+    dvm.vm.provider "virtualbox" do |vb|
+      vb.name = "docker-vm"
+      vb.memory = 2048
+      vb.cpus = 1
+    end
+    dvm.vm.provision "shell", path: "scripts/autoriser-admin.sh"
+  end
+end

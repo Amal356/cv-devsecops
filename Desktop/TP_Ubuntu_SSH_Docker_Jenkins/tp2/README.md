@@ -1,0 +1,298 @@
+# DevSecOps Portfolio – Amal Jemli
+
+Dépôt GitHub : https://github.com/Amal356/cv-devsecops
+
+## Sommaire
+
+- [Voir le CV depuis la machine physique (pas à pas)](#voir-le-cv-depuis-la-machine-physique)
+- [Étape 1 – Ubuntu Server 26.04 et accès SSH sécurisé](01-ubuntu-ssh/README.md)
+- [Étape 2 – Test SSH depuis la machine physique](02-test-ssh/README.md)
+- [Étape 3 – Installation de Docker](03-docker/README.md)
+- [Étape 4 – Installation de Jenkins](04-jenkins/README.md)
+- Étapes 5 et 7 à 14 – Portfolio et Docker : ci-dessous
+- [Étape 6 – Push GitHub via SSH](06-github-ssh/README.md)
+- [Étapes 15 à 17 – Vagrant](07-vagrant/README.md)
+- [Étapes 18 à 21 – Portfolio Next.js](08-nextjs/README.md)
+- [Étapes 22 à 24 – Pipeline Jenkins](09-jenkins-pipeline/README.md)
+
+## Voir le CV depuis la machine physique
+
+Le portfolio tourne dans un conteneur Docker (Nginx) à l'intérieur de la VM Ubuntu. Pour l'ouvrir depuis le navigateur de la machine physique (Windows), la requête traverse trois couches :
+
+```
+Navigateur Windows          VirtualBox (NAT)            VM Ubuntu                 Conteneur Docker
+http://localhost:8081  -->  redirection 8081 -> 8081 --> port 8081 (UFW ouvert) --> cv-compose : Nginx port 80
+```
+
+### Étape 1 – Démarrer la VM
+
+Dans VirtualBox, sélectionner `ubuntu-server-26` puis **Démarrer** (ou **Démarrage sans affichage** pour la lancer en arrière-plan).
+
+### Étape 2 – Vérifier la redirection de ports VirtualBox
+
+La VM est en mode NAT : son adresse (`10.0.2.15`) n'est pas joignable directement depuis Windows. Une règle de redirection relie le port 8081 de Windows au port 8081 de la VM (Configuration → Réseau → Avancé → Redirection de ports) :
+
+| Nom | Protocole | Port hôte (Windows) | Port invité (VM) | Usage |
+|---|---|---|---|---|
+| http-8081 | TCP | 8081 | 8081 | Portfolio servi par Docker / Nginx |
+| nextjs-3000 | TCP | 3000 | 3000 | Portfolio Next.js (partie V) |
+
+![Redirection de ports](01-ubuntu-ssh/screenshots/00-redirection-ports.png)
+
+### Étape 3 – Se connecter à la VM en SSH
+
+Depuis PowerShell sur la machine physique :
+
+```powershell
+ssh amal@127.0.0.1 -p 2222
+```
+
+### Étape 4 – Lancer le portfolio avec Docker Compose
+
+```bash
+cd ~/cv-devsecops
+docker compose up -d
+docker compose ps
+```
+
+`docker compose up -d` construit l'image `cv-docker` si besoin et démarre le conteneur `cv-compose` en arrière-plan. `docker compose ps` doit afficher l'état `Up` et le port `0.0.0.0:8081->80/tcp`.
+
+Grâce à `restart: unless-stopped` dans `docker-compose.yml`, le conteneur redémarre automatiquement avec la VM : après un redémarrage, cette étape n'est plus nécessaire.
+
+### Étape 5 – Vérifier depuis la VM
+
+```bash
+curl -I http://localhost:8081
+sudo ufw status | grep 8081
+```
+
+- `curl -I` doit répondre `HTTP/1.1 200 OK` avec l'en-tête `Server: nginx` : le site fonctionne dans la VM.
+- La règle `8081/tcp ALLOW` doit apparaître dans le pare-feu UFW. Si elle manque : `sudo ufw allow 8081/tcp`.
+
+### Étape 6 – Ouvrir le CV dans le navigateur Windows
+
+Dans le navigateur de la machine physique :
+
+```
+http://localhost:8081
+```
+
+![Portfolio ouvert depuis la machine physique](screenshots/10-portfolio-compose.png)
+
+### Variante – Version Next.js (partie V)
+
+```bash
+cd ~/cv-devsecops/portfolio-next
+npm ci
+npm run build
+npm run start -- -H 0.0.0.0 -p 3000
+```
+
+Puis ouvrir `http://localhost:3000` dans le navigateur Windows. L'option `-H 0.0.0.0` permet au serveur d'accepter les connexions venant de l'extérieur de la VM.
+
+### En cas de problème
+
+| Symptôme | Vérification | Solution |
+|---|---|---|
+| La page ne charge pas | La VM est-elle démarrée ? | Démarrer la VM dans VirtualBox |
+| La page ne charge pas | `docker compose ps` affiche-t-il `Up` ? | `docker compose up -d` |
+| `curl` fonctionne dans la VM mais pas Windows | Règle VirtualBox 8081 → 8081 présente ? | Ajouter la redirection de port |
+| `curl` fonctionne dans la VM mais pas Windows | `sudo ufw status` montre-t-il 8081 ? | `sudo ufw allow 8081/tcp` |
+| `port is already allocated` | Un autre conteneur utilise déjà 8081 (`docker ps`) | `docker rm -f <nom>` puis `docker compose up -d` |
+
+Le mini CV de l'étape 5 a évolué en petite application de portfolio (HTML5, CSS3, JavaScript).
+
+## Étape 5 – Mini CV One Page
+Code de la première version, avant son évolution en portfolio : commit [7702fbd](https://github.com/Amal356/cv-devsecops/tree/7702fbd).
+
+![Mini CV](screenshots/01-cv.png)
+
+## Étape 7 – Évolution vers un DevSecOps Portfolio
+
+Sections : **About, Skills, DevSecOps Skills, Projects, Experience, Contact**.
+
+Principales améliorations :
+
+- barre de navigation fixe avec liens d'ancrage vers chaque section et défilement doux ;
+- page découpée en sections au lieu d'un CV en deux colonnes ;
+- thème clair / sombre, mémorisé dans le navigateur, qui suit aussi la préférence du système ;
+- mise en page adaptée aux petits écrans (responsive) ;
+- contenu des projets séparé de la mise en page, dans le code JavaScript.
+
+![Portfolio](screenshots/02-portfolio.png)
+
+## Étape 8 – Section DevSecOps Skills
+
+Technologies du projet : Git, Docker, Jenkins, Kubernetes, Ansible, Terraform, Argo CD.
+Git, Docker et Jenkins sont marqués « Pratiqué dans ce projet », les autres « Au programme ».
+
+![DevSecOps Skills](screenshots/03-devsecops-skills.png)
+
+## Étape 9 – Projects générés dynamiquement en JavaScript
+
+Les projets sont décrits dans un tableau d'objets, puis la page est construite par une fonction :
+
+```javascript
+const projets = [
+  {
+    titre: "Plateforme d'analyse des réservations",
+    periode: "2025 · Desert Navigation",
+    description: "Analyse des réservations Airbnb et Booking ...",
+    technologies: ["Python", "PostgreSQL", "React", "Node.js", "JWT"]
+  },
+  // ...
+];
+
+function creerProjet(p) {
+  const bloc = document.createElement("article");
+  const titre = document.createElement("h3");
+  titre.textContent = p.titre;
+  // ... description, technologies, lien
+  bloc.append(titre /* ... */);
+  return bloc;
+}
+
+document.getElementById("project-list").append(...projets.map(creerProjet));
+```
+
+Ajouter un projet revient à ajouter un objet au tableau.
+
+![Projects](screenshots/04-projects.png)
+
+## Étape 10 – Dockerfile (Nginx)
+
+Fichier `Dockerfile` à la racine du projet :
+
+```dockerfile
+# Image officielle Nginx, version légère (Alpine Linux)
+FROM nginx:alpine
+
+# Copie du site statique dans le dossier servi par Nginx
+COPY index.html style.css script.js /usr/share/nginx/html/
+
+# Nginx écoute sur le port 80 dans le conteneur
+EXPOSE 80
+```
+
+Explication :
+
+- `FROM nginx:alpine` : l'image de départ est Nginx sur Alpine Linux, une base très légère (quelques dizaines de Mo).
+- `COPY ...` : les trois fichiers du portfolio sont copiés dans `/usr/share/nginx/html/`, le dossier que Nginx sert par défaut. Le portfolio est un site statique, il n'y a donc rien à compiler.
+- `EXPOSE 80` : indique que le conteneur écoute sur le port 80. La publication vers la machine se fait ensuite avec `-p` ou Docker Compose.
+
+Un fichier `.dockerignore` exclut du build ce qui n'est pas utile au site (`.git`, `screenshots`, `README.md`, `Dockerfile`, `docker-compose.yml`).
+
+![Dockerfile](screenshots/05-dockerfile.png)
+
+## Étape 11 – Construction de l'image `cv-docker`
+
+```bash
+docker build -t cv-docker .
+docker images
+```
+
+`-t cv-docker` donne le nom `cv-docker` à l'image (tag `latest` par défaut) et `.` indique que le contexte de build est le dossier courant.
+
+![Build de l'image](screenshots/06-docker-build.png)
+
+## Étape 12 – Exécution du conteneur
+
+```bash
+docker run -d --name cv -p 8081:80 cv-docker
+docker ps
+```
+
+- `-d` : le conteneur tourne en arrière-plan ;
+- `--name cv` : nom du conteneur ;
+- `-p 8081:80` : le port 8081 de la VM est relié au port 80 de Nginx dans le conteneur.
+
+Résultat de `docker ps` :
+
+```
+CONTAINER ID   IMAGE       COMMAND                  CREATED         STATUS         PORTS                                         NAMES
+ae8f56711996   cv-docker   "/docker-entrypoint.…"   7 seconds ago   Up 6 seconds   0.0.0.0:8081->80/tcp, [::]:8081->80/tcp       cv
+```
+
+![docker run et docker ps](screenshots/07-docker-run.png)
+
+Accès depuis la machine physique : `http://localhost:8081` (redirection de port VirtualBox 8081 → 8081 de la VM).
+
+![Portfolio servi par Nginx](screenshots/08-portfolio-docker.png)
+
+Preuve que c'est bien Nginx qui répond (version et journaux d'accès du conteneur) :
+
+```bash
+docker exec cv nginx -v
+docker logs --tail 5 cv
+```
+
+![Version de Nginx et journaux d'accès](screenshots/08b-nginx-logs.png)
+
+En-tête de réponse HTTP vu dans les outils du navigateur (`Server: nginx/1.31.6`) :
+
+![En-tête Server: nginx](screenshots/08d-nginx-header.png)
+
+## Étape 13 – Déploiement avec Docker Compose
+
+Fichier `docker-compose.yml` :
+
+```yaml
+services:
+  cv:
+    build: .
+    image: cv-docker
+    container_name: cv-compose
+    ports:
+      - "8081:80"
+    restart: unless-stopped
+```
+
+Le conteneur de l'étape 12 est d'abord supprimé pour libérer le port 8081, puis le service est lancé :
+
+```bash
+docker rm -f cv
+docker compose up -d
+docker compose ps
+```
+
+`restart: unless-stopped` relance le conteneur après un redémarrage de la VM.
+
+Résultat de `docker compose ps` :
+
+```
+NAME         IMAGE       COMMAND                  SERVICE   CREATED          STATUS          PORTS
+cv-compose   cv-docker   "/docker-entrypoint.…"   cv        20 minutes ago   Up 20 minutes   0.0.0.0:8081->80/tcp, [::]:8081->80/tcp
+```
+
+![docker compose up et ps](screenshots/09-docker-compose.png)
+
+![Portfolio déployé avec Compose](screenshots/10-portfolio-compose.png)
+
+## Étape 14 – Publication sur GitHub via SSH
+
+Dépôt GitHub mis à jour : https://github.com/Amal356/cv-devsecops
+
+Commandes Git utilisées dans la VM :
+
+```bash
+cd ~/cv-devsecops
+git status
+git add .
+git commit -m "Dockerisation : Dockerfile, docker-compose et documentation"
+git push
+git log --oneline
+```
+
+Le dépôt distant utilise SSH (`git@github.com:Amal356/cv-devsecops.git`), configuré à l'étape 6 : aucun mot de passe n'est demandé au push.
+
+![git push](screenshots/11-git-push-final.png)
+
+Contenu du dépôt sur GitHub après le push :
+
+![Dépôt GitHub](screenshots/12-depot-github.png)
+
+---
+
+## Partie IV – Vagrant (étapes 15 à 17)
+
+Toute la partie Vagrant (installation, Vagrantfile, vagrant ssh, configuration automatique) est documentée ici : [07-vagrant/README.md](07-vagrant/README.md)
