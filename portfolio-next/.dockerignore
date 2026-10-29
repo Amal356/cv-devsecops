@@ -7,3 +7,6 @@ Dockerfile
 .dockerignore
 README.md
 AGENTS.md
+__tests__
+jest.config.mjs
+jest.setup.js

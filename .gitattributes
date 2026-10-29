@@ -1,0 +1,7 @@
+# Fins de ligne Unix (LF) dans le dépôt, même si les fichiers sont modifiés sous Windows
+* text=auto eol=lf
+
+# Fichiers binaires
+*.png binary
+*.jpg binary
+*.ico binary

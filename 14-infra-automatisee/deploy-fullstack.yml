@@ -1,0 +1,135 @@
+# Étape 43 – Déploiement automatique du DevSecOps Portfolio (frontend + API + PostgreSQL)
+#
+# Deux façons de le lancer :
+#   1. Depuis la VM d'administration (Activité 3) :
+#        ansible-playbook -i inventory.ini deploy-fullstack.yml
+#   2. Automatiquement par Vagrant (étape 44) : vagrant up  (provisionneur ansible_local)
+#
+# Le playbook est idempotent : le relancer ne recrée que ce qui a changé.
+- name: Déployer le DevSecOps Portfolio avec Docker Compose
+  hosts: all
+  become: true
+
+  vars:
+    depot_git: https://github.com/Amal356/cv-devsecops.git
+    branche: main
+    dossier_projet: /opt/cv-devsecops
+    utilisateur_docker: "{{ ansible_user | default('vagrant') }}"
+    # Adresse par laquelle le navigateur de la machine physique joint la VM :
+    # la première IP du réseau privé VirtualBox 192.168.56.x (modifiable avec -e adresse_publique=...)
+    adresse_publique: "{{ ansible_facts['all_ipv4_addresses'] | select('match', '^192\\.168\\.56\\.') | first | default(ansible_facts['default_ipv4']['address']) }}"
+    architecture:
+      x86_64: amd64
+      aarch64: arm64
+
+  tasks:
+    # ---------- 1. Docker Engine + Compose (même méthode que l'étape 28) ----------
+    - name: Installer les prérequis
+      ansible.builtin.apt:
+        name: [ca-certificates, curl, git, python3-debian]
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Créer le dossier des clés APT
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: "0755"
+
+    - name: Télécharger la clé GPG officielle de Docker
+      ansible.builtin.get_url:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        dest: /etc/apt/keyrings/docker.asc
+        mode: "0644"
+
+    - name: Ajouter le dépôt officiel Docker
+      ansible.builtin.deb822_repository:
+        name: docker
+        types: deb
+        uris: https://download.docker.com/linux/ubuntu
+        suites: "{{ ansible_facts['distribution_release'] }}"
+        components: stable
+        architectures: "{{ architecture[ansible_facts['architecture']] }}"
+        signed_by: /etc/apt/keyrings/docker.asc
+
+    - name: Installer Docker Engine et le plugin Compose
+      ansible.builtin.apt:
+        name: [docker-ce, docker-ce-cli, containerd.io, docker-buildx-plugin, docker-compose-plugin]
+        state: present
+        update_cache: true
+
+    - name: Démarrer Docker et l'activer au démarrage
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Autoriser l'utilisateur à lancer docker sans sudo
+      ansible.builtin.user:
+        name: "{{ utilisateur_docker }}"
+        groups: docker
+        append: true
+
+    # ---------- 2. Code du projet ----------
+    - name: Cloner ou mettre à jour le dépôt GitHub
+      ansible.builtin.git:
+        repo: "{{ depot_git }}"
+        dest: "{{ dossier_projet }}"
+        version: "{{ branche }}"
+        force: true
+      register: depot
+
+    # ---------- 3. Configuration (.env, jamais versionné) ----------
+    # Le mot de passe PostgreSQL est généré aléatoirement à la première exécution
+    # et conservé ensuite (force: false) : aucun secret dans Git ni dans ce playbook.
+    - name: Créer le fichier .env de Docker Compose
+      ansible.builtin.copy:
+        dest: "{{ dossier_projet }}/.env"
+        mode: "0600"
+        force: false
+        content: |
+          POSTGRES_USER=amal
+          POSTGRES_PASSWORD={{ lookup('ansible.builtin.password', '/dev/null', length=24, chars=['ascii_letters', 'digits']) }}
+          POSTGRES_DB=portfolio_db
+          CORS_ORIGIN=http://{{ adresse_publique }}:3000
+          NEXT_PUBLIC_API_URL=http://{{ adresse_publique }}:4000
+
+    # ---------- 4. Lancement de la stack ----------
+    - name: Construire et lancer frontend, API et PostgreSQL
+      ansible.builtin.command:
+        cmd: docker compose -f docker-compose.fullstack.yml up -d --build --wait --wait-timeout 300
+        chdir: "{{ dossier_projet }}"
+      register: compose
+      changed_when: "'Started' in compose.stderr or 'Recreated' in compose.stderr or 'Created' in compose.stderr"
+
+    - name: Vérifier que l'API répond
+      ansible.builtin.uri:
+        url: http://localhost:4000/api/health
+      register: sante
+      retries: 10
+      delay: 5
+      until: sante.status == 200
+
+    - name: Vérifier que le portfolio affiche les données de l'API
+      ansible.builtin.uri:
+        url: http://localhost:3000/projects
+        return_content: true
+      register: page
+      retries: 10
+      delay: 5
+      until: page.status == 200 and 'source-api' in page.content
+
+    - name: Lister les conteneurs
+      ansible.builtin.command: docker compose -f docker-compose.fullstack.yml ps
+      args:
+        chdir: "{{ dossier_projet }}"
+      register: ps
+      changed_when: false
+
+    - name: Afficher le résultat
+      ansible.builtin.debug:
+        msg:
+          - "{{ ps.stdout_lines }}"
+          - "Portfolio : http://{{ adresse_publique }}:3000"
+          - "API       : http://{{ adresse_publique }}:4000/api/health"

@@ -33,6 +33,8 @@ API_URL=http://localhost:4000 npm run dev -- -H 0.0.0.0 -p 3000
 
 ## Étape 37 – Fichiers `.env.example`
 
+> Version de l'Activité 3. À l'Activité 4 se sont ajoutés `NEXT_PUBLIC_API_URL` (formulaire de contact), `CORS_ORIGIN` et la connexion PostgreSQL : voir [étape 56](../16-postgresql-prisma/README.md).
+
 Un fichier `.env.example` liste les variables nécessaires, avec des valeurs d'exemple. Il est versionné sur GitHub. Les vrais fichiers (`.env`, `.env.local`) restent sur la machine : ils sont exclus par `.gitignore`, car ils peuvent contenir des secrets (mots de passe, tokens).
 
 [`portfolio-next/.env.example`](../portfolio-next/.env.example) :

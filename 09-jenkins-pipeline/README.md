@@ -112,6 +112,8 @@ Ce build #4 a été **lancé automatiquement** après le `git push` du Jenkinsfi
 
 ## Jenkinsfile final
 
+> Version de l'Activité 2. Le [Jenkinsfile](../Jenkinsfile) actuel est le pipeline DevSecOps de l'Activité 4 : voir [étapes 61 à 69](../18-pipeline-devsecops/README.md).
+
 ```groovy
 pipeline {
     agent any

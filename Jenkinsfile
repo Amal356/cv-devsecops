@@ -1,57 +1,99 @@
+// Pipeline DevSecOps du Portfolio (Activité 2 étapes 22-24, Activité 4 étapes 61-69)
+//
+// Prérequis sur la VM Jenkins (voir 18-pipeline-devsecops/README.md) :
+//   - Node.js 22 et npm (déjà utilisés aux étapes 23-24)
+//   - Docker, avec l'utilisateur jenkins dans le groupe docker :
+//       sudo usermod -aG docker jenkins && sudo systemctl restart jenkins
+//   Gitleaks, Semgrep, OWASP Dependency-Check et Trivy tournent dans des conteneurs :
+//   rien d'autre à installer.
+//
+// Politique de sécurité (étape 69) : le pipeline ÉCHOUE si un outil trouve
+//   - un secret dans le code (Gitleaks),
+//   - un problème de sévérité ERROR dans le code (Semgrep),
+//   - une dépendance npm de sévérité critique (npm audit),
+//   - une dépendance avec un score CVSS >= 9 (Dependency-Check),
+//   - une vulnérabilité CRITICAL corrigeable dans une image Docker (Trivy).
+
 pipeline {
     agent any
 
-    environment {
-        GIT_SHA = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
-        DOCKER_IMAGE_API = "devsecops-api:${GIT_SHA}"
-        DOCKER_IMAGE_PORTFOLIO = "devsecops-portfolio:${GIT_SHA}"
+    options {
+        disableConcurrentBuilds()
+        timestamps()
+        timeout(time: 60, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '15'))
     }
 
-    options {
-        skipDefaultCheckout()
-        disableConcurrentBuilds()
+    triggers {
+        // Une VM en NAT n'est pas joignable par un webhook GitHub : vérification toutes les 5 min
+        pollSCM('H/5 * * * *')
+    }
+
+    environment {
+        REPORTS = 'reports'
+        // Les conteneurs d'analyse écrivent avec l'utilisateur jenkins (fichiers supprimables)
+        DOCKER_USER = sh(script: 'echo "$(id -u):$(id -g)"', returnStdout: true).trim()
+        // Clé NVD facultative pour accélérer Dependency-Check : après l'avoir enregistrée
+        // dans Jenkins (Secret text, ID "nvd-api-key"), remplacer '' par credentials('nvd-api-key')
+        NVD_API_KEY = ''
     }
 
     stages {
         stage('Checkout') {
             steps {
                 checkout scm
-                sh "echo 'Building for commit: ${GIT_SHA}'"
+                script {
+                    // Étape 63 : le hash court du commit sert de tag aux images Docker
+                    env.GIT_SHA = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    currentBuild.description = "commit ${env.GIT_SHA}"
+                }
+                sh 'mkdir -p "$REPORTS"'
+                echo "Commit analysé : ${env.GIT_SHA}"
             }
         }
 
-        stage('Security: Secrets Scan') {
+        stage('Secrets : Gitleaks') {
+            // Étape 64 : recherche de secrets (mots de passe, clés, jetons) dans le code
             steps {
-                // Étape 64 : Gitleaks
-                sh 'gitleaks detect --source . -v || echo "Secrets detectes (ignore pour le TP)"'
+                sh '''
+                    docker run --rm -u "$DOCKER_USER" -v "$WORKSPACE:/src" -w /src \
+                        zricethezav/gitleaks:latest detect --no-git --source /src --config /src/.gitleaks.toml \
+                        --redact --verbose --exit-code 1 \
+                        --report-format json --report-path /src/$REPORTS/gitleaks.json
+                '''
             }
         }
 
-        stage('Security: SAST') {
+        stage('SAST : Semgrep') {
+            // Étape 65 : analyse statique de sécurité du code JavaScript et des Dockerfiles
             steps {
-                // Étape 65 : Semgrep
-                sh 'semgrep scan --config auto --error || echo "SAST findings (ignore pour le TP)"'
+                sh '''
+                    docker run --rm -u "$DOCKER_USER" -e HOME=/tmp -v "$WORKSPACE:/src" -w /src \
+                        semgrep/semgrep:latest semgrep scan \
+                        --config p/javascript --config p/dockerfile --config p/owasp-top-ten \
+                        --exclude node_modules --exclude .next --exclude "*.test.js" \
+                        --severity ERROR --error --metrics off \
+                        --json-output=$REPORTS/semgrep.json
+                '''
             }
         }
 
-        stage('Install & Audit') {
-            steps {
-                parallel {
-                    stage('API') {
-                        steps {
-                            dir('api') {
-                                sh 'npm ci'
-                                // Étape 66 : npm audit
-                                sh 'npm audit || echo "Vulnérabilités NPM détectées"'
-                            }
+        stage('Installation et audit npm') {
+            // Étapes 23 et 66 : npm ci puis npm audit (échec si une dépendance est critique)
+            parallel {
+                stage('API') {
+                    steps {
+                        dir('api') {
+                            sh 'npm ci'
+                            sh 'npm audit --omit=dev --audit-level=critical'
                         }
                     }
-                    stage('Frontend') {
-                        steps {
-                            dir('portfolio-next') {
-                                sh 'npm ci'
-                                sh 'npm audit || echo "Vulnérabilités NPM détectées"'
-                            }
+                }
+                stage('Frontend') {
+                    steps {
+                        dir('portfolio-next') {
+                            sh 'npm ci'
+                            sh 'npm audit --omit=dev --audit-level=critical'
                         }
                     }
                 }
@@ -59,58 +101,95 @@ pipeline {
         }
 
         stage('Tests') {
-            steps {
-                parallel {
-                    stage('API Tests') {
-                        steps {
-                            dir('api') {
-                                sh 'npm test'
-                            }
+            // Étape 61 : tests automatisés du frontend et de l'API
+            parallel {
+                stage('Tests API') {
+                    steps {
+                        dir('api') {
+                            sh 'npm test'
                         }
                     }
-                    stage('Frontend Tests') {
-                        steps {
-                            dir('portfolio-next') {
-                                // sh 'npm test' // Décommenter si des tests frontend existent
-                                echo 'Tests frontend simulés'
-                            }
+                }
+                stage('Tests frontend') {
+                    steps {
+                        dir('portfolio-next') {
+                            sh 'npm test -- --ci'
                         }
                     }
                 }
             }
         }
 
-        stage('Security: Dependency-Check') {
+        stage('Build Next.js') {
+            // Étape 24 : le build de production doit réussir
             steps {
-                // Étape 67 : OWASP Dependency-Check
-                echo 'Running OWASP Dependency-Check...'
-                // sh 'dependency-check --project "DevSecOps Portfolio" --scan .'
+                dir('portfolio-next') {
+                    sh 'npm run build'
+                }
             }
         }
 
-        stage('Docker Build') {
+        stage('Dépendances : OWASP Dependency-Check') {
+            // Étape 67 : vulnérabilités connues (CVE) des bibliothèques utilisées.
+            // Le volume dependency-check-data garde la base NVD entre deux builds
+            // (le premier téléchargement est long, surtout sans clé NVD).
             steps {
-                // Étape 62 & 63 : Build avec tags Git SHA
-                sh "docker build -t ${DOCKER_IMAGE_API} api"
-                sh "docker build -t ${DOCKER_IMAGE_PORTFOLIO} portfolio-next"
+                // L'image tourne avec son propre utilisateur : le dossier des rapports doit lui être accessible
+                sh '''
+                    chmod 777 "$REPORTS"
+                    docker run --rm \
+                        -v "$WORKSPACE:/src" -v dependency-check-data:/usr/share/dependency-check/data \
+                        owasp/dependency-check:latest \
+                        --project "DevSecOps Portfolio" \
+                        --scan /src/api/package-lock.json --scan /src/portfolio-next/package-lock.json \
+                        --format HTML --format JSON --out /src/$REPORTS \
+                        --failOnCVSS 9 ${NVD_API_KEY:+--nvdApiKey $NVD_API_KEY}
+                '''
             }
         }
 
-        stage('Security: Image Scan') {
+        stage('Build des images Docker') {
+            // Étapes 62 et 63 : images taguées avec le hash du commit (et latest)
             steps {
-                // Étape 68 : Trivy
-                sh "trivy image --severity CRITICAL --exit-code 0 ${DOCKER_IMAGE_API}"
-                sh "trivy image --severity CRITICAL --exit-code 0 ${DOCKER_IMAGE_PORTFOLIO}"
+                sh '''
+                    docker build -t devsecops-api:$GIT_SHA -t devsecops-api:latest api
+                    docker build -t devsecops-portfolio:$GIT_SHA -t devsecops-portfolio:latest portfolio-next
+                    docker images --filter "reference=devsecops-*" --format "table {{.Repository}}\\t{{.Tag}}\\t{{.Size}}"
+                '''
+            }
+        }
+
+        stage('Images : Trivy') {
+            // Étape 68 : vulnérabilités des images finales (système Alpine + node_modules)
+            steps {
+                sh '''
+                    for image in devsecops-api devsecops-portfolio; do
+                        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                            -v trivy-cache:/root/.cache/trivy -v "$WORKSPACE/$REPORTS:/reports" \
+                            aquasec/trivy:latest image --scanners vuln \
+                            --severity HIGH,CRITICAL --format table \
+                            --output /reports/trivy-$image.txt "$image:$GIT_SHA"
+                        cat "$REPORTS/trivy-$image.txt"
+                        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                            -v trivy-cache:/root/.cache/trivy \
+                            aquasec/trivy:latest image --scanners vuln --quiet \
+                            --severity CRITICAL --ignore-unfixed --exit-code 1 "$image:$GIT_SHA"
+                    done
+                '''
             }
         }
     }
 
     post {
+        always {
+            // Les rapports restent consultables dans Jenkins (Build > Artifacts)
+            archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
+        }
         success {
-            echo "Pipeline réussi pour le commit ${GIT_SHA}"
+            echo "Pipeline réussi : images devsecops-api:${env.GIT_SHA} et devsecops-portfolio:${env.GIT_SHA}"
         }
         failure {
-            echo "Pipeline échoué pour le commit ${GIT_SHA}"
+            echo "Pipeline échoué pour le commit ${env.GIT_SHA} : voir le stage en rouge et les rapports archivés"
         }
     }
 }

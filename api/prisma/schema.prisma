@@ -1,8 +1,11 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Schéma Prisma de l'API (étape 55)
+// Migrations : npx prisma migrate dev --name <nom>  (développement)
+//              npx prisma migrate deploy            (conteneur, au démarrage)
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // native : machine de développement ; linux-musl-openssl-3.0.x : image node:22-alpine
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -10,6 +13,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Messages reçus par le formulaire de contact (étape 54)
 model Contact {
   id        Int      @id @default(autoincrement())
   name      String

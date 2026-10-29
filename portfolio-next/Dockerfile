@@ -8,6 +8,11 @@ RUN npm ci
 FROM node:22-alpine AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
+# Adresse de l'API vue par le navigateur (formulaire de contact), intégrée au build.
+# Ce n'est pas un secret : elle est visible par tous les visiteurs.
+# nosemgrep
+ARG NEXT_PUBLIC_API_URL=http://localhost:4000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Produit .next/standalone (voir output: "standalone" dans next.config.mjs)

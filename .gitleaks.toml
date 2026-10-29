@@ -1,0 +1,13 @@
+# Configuration Gitleaks (étape 64) : règles par défaut + dossiers générés ignorés.
+# Ces dossiers ne sont pas dans Git, mais restent dans le workspace Jenkins entre deux builds.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Fichiers générés (dépendances, build Next.js, rapports)"
+paths = [
+  '''(^|/)node_modules/''',
+  '''(^|/)\.next/''',
+  '''(^|/)reports/''',
+  '''(^|/)\.vagrant/''',
+]

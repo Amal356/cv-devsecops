@@ -1,0 +1,15 @@
+# Secrets et configuration locale : jamais dans Git
+.env
+.env.*
+!.env.example
+
+# Dépendances et builds
+node_modules/
+.next/
+coverage/
+
+# Rapports des outils de sécurité (archivés par Jenkins)
+reports/
+
+# Vagrant
+.vagrant/

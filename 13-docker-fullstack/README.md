@@ -120,6 +120,8 @@ Deuxième construction : toutes les étapes sont `CACHED`, le build ne prend qu'
 
 ## Étape 41 – Docker Compose : frontend + API
 
+> Version de l'Activité 3. À l'Activité 4, le fichier a reçu un service `db` (PostgreSQL) et lit le mot de passe dans `.env` : voir [étape 53](../16-postgresql-prisma/README.md).
+
 [`docker-compose.fullstack.yml`](../docker-compose.fullstack.yml), à la racine du dépôt. Le fichier `docker-compose.yml` de l'étape 13 (portfolio HTML servi par Nginx) est conservé : celui-ci a un nom différent, et on le désigne avec l'option `-f`.
 
 ```yaml

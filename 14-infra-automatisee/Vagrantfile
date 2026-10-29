@@ -1,0 +1,33 @@
+# Étape 44 – Chaîne complète automatisée :
+#   vagrant up -> création de la VM -> Ansible -> installation de Docker -> déploiement du Portfolio
+#
+# Lancement (PowerShell, dans ce dossier) : vagrant up
+# Reconstruction complète (étape 45)     : vagrant destroy -f ; vagrant up
+#
+# Provisionneur "ansible_local" : Ansible est installé et exécuté DANS la VM.
+# (Le provisionneur "ansible" exigerait Ansible sur la machine hôte, impossible sous Windows.)
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-24.04"
+  config.vm.boot_timeout = 600
+
+  config.vm.define "portfolio-vm" do |vm|
+    vm.vm.hostname = "portfolio-vm"
+    # Réseau privé hôte : le portfolio est joignable depuis Windows sur http://192.168.56.50:3000
+    vm.vm.network "private_network", ip: "192.168.56.50"
+    vm.vm.network "forwarded_port", guest: 22, host: 2203, id: "ssh"
+
+    vm.vm.provider "virtualbox" do |vb|
+      vb.name = "portfolio-vm"
+      vb.memory = 3072   # le build Next.js a besoin d'environ 2 Go
+      vb.cpus = 2
+    end
+
+    # Ce dossier est partagé dans la VM sous /vagrant : le playbook y est lu directement
+    vm.vm.provision "ansible_local" do |ansible|
+      ansible.playbook = "deploy-fullstack.yml"
+      ansible.install_mode = "default"
+      ansible.compatibility_mode = "2.0"
+      ansible.extra_vars = { utilisateur_docker: "vagrant" }
+    end
+  end
+end
