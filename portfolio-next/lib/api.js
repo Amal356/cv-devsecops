@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { connection } from "next/server";
+
 import { projects as projetsLocaux } from "@/data/projects";
 import { skills as skillsLocaux, devsecopsSkills as devsecopsLocaux } from "@/data/skills";
 
@@ -24,7 +24,7 @@ async function appelApi(chemin) {
 async function avecRepli(chemin, donneesLocales) {
   // Rendu à la demande : sans cela, Next.js générerait la page au build, quand l'API n'existe pas.
   // Appelé hors du try : Next.js doit voir ce signal, il ne faut pas l'intercepter.
-  await connection();
+
 
   try {
     return { data: await appelApi(chemin), source: "api" };

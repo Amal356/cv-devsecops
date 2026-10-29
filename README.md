@@ -17,8 +17,100 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 - [Étapes 29 à 35 – API Node.js / Express](11-api-express/README.md)
 - [Étapes 36 et 37 – Variables d'environnement](12-variables-env/README.md)
 - [Étapes 38 à 42 – Dockerisation frontend + API](13-docker-fullstack/README.md)
+- [Activités 11 à 16 – Infrastructure, Sécurité, DB et CI/CD](#activités-11-à-16--infrastructure-sécurité-db-et-cicd)
 
 Le mini CV de l'étape 5 a évolué en petite application de portfolio (HTML5, CSS3, JavaScript).
+...
+## Activités 11 à 16 – Infrastructure, Sécurité, DB et CI/CD
+
+### 11. Infrastructure automatisée (Vagrant + Ansible)
+
+**Étape 43 – Playbook Ansible**
+La stack fullstack est déployée avec la commande :
+```bash
+ansible-playbook -i inventory.ini ansible/deploy-fullstack.yml
+```
+
+**Étape 44 – Vagrantfile automatisé**
+Le [Vagrantfile](07-vagrant/Vagrantfile) lance automatiquement le provisionnement Ansible :
+```ruby
+vm.vm.provision "ansible" do |ansible|
+  ansible.playbook = "../ansible/deploy-fullstack.yml"
+end
+```
+
+**Étape 45 – Test de reconstruction**
+Test effectué : `vagrant destroy -f` suivi de `vagrant up`. Le portfolio est accessible immédiatement après le démarrage.
+
+### 12. Évolution et sécurisation de l'API
+
+**Étape 46 – Route POST /api/contact**
+Exemple de requête :
+```bash
+curl -X POST http://localhost:4000/api/contact \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Amal","email":"amal@example.com","message":"Message de test"}'
+```
+Réponse : `{"success":true,"message":"Message enregistré !"}`
+
+**Étape 48 – Validation Zod**
+Requête refusée (nom trop court) :
+```json
+{
+  "success": false,
+  "errors": [{"field": "name", "message": "Le nom doit contenir au moins 2 caractères"}]
+}
+```
+
+**Étape 50 – Headers Helmet**
+Résultat de `curl -I` :
+```text
+Strict-Transport-Security: max-age=31536000; includeSubDomains
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+```
+
+**Étape 51 – Rate Limiting**
+Réponse après 5 essais : `429 Too Many Requests`.
+
+**Étape 52 – OWASP API Security Top 10**
+
+| Risque OWASP | Mesure mise en place |
+| :--- | :--- |
+| **API3: Broken Object Property Level Auth** | Validation stricte avec Zod (seuls les champs name/email/message sont acceptés). |
+| **API4: Unrestricted Resource Consumption** | Rate limiting sur la route /api/contact. |
+| **API8: Security Misconfiguration** | Utilisation de Helmet et suppression de `x-powered-by`. |
+
+### 13. Base de données PostgreSQL
+
+**Étape 53 – Service PostgreSQL**
+Extrait du `docker-compose.fullstack.yml` :
+```yaml
+db:
+  image: postgres:16-alpine
+  environment:
+    POSTGRES_DB: portfolio_db
+```
+
+**Étape 55 – Migrations Prisma**
+Commande : `npx prisma migrate dev --name init`
+
+### 14. Tests applicatifs
+
+**Étape 58 – Tests API Express**
+Commande : `npm test` dans le dossier `api`.
+Les tests valident la santé de l'API, la création de contact et la validation Zod.
+
+### 15 & 16. Pipeline DevSecOps Jenkins
+
+**Étape 61 – Stages Jenkins**
+Le pipeline inclut : Checkout, Secrets Scan (Gitleaks), SAST (Semgrep), Audit (npm audit), Tests, Docker Build et Image Scan (Trivy).
+
+**Étape 63 – Tags Git SHA**
+Les images sont taguées avec le hash du commit (ex: `devsecops-api:defe644`).
+
+**Étape 67 – OWASP Dependency-Check**
+Intégré dans le pipeline pour détecter les vulnérabilités dans les librairies tierces.
 
 ## Étape 5 – Mini CV One Page
 Code de la première version, avant son évolution en portfolio : commit [7702fbd](https://github.com/Amal356/cv-devsecops/tree/7702fbd).

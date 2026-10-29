@@ -1,4 +1,7 @@
+# Portfolio complet : frontend Next.js + API Express
+# Lancement : docker compose -f docker-compose.fullstack.yml up -d --build
 name: devsecops-portfolio
+
 services:
   api:
     build: ./api
@@ -8,13 +11,14 @@ services:
       PORT: 4000
       DATABASE_URL: postgresql://amal:password@db:5432/portfolio_db?schema=public
     ports:
-      - "4000:4000"
+      - "4000:4000"          # accès direct à l'API depuis la VM (tests avec curl)
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
     networks:
       - portfolio-net
+
   db:
     image: postgres:16-alpine
     container_name: devsecops-db
@@ -32,20 +36,23 @@ services:
     restart: unless-stopped
     networks:
       - portfolio-net
+
   frontend:
     build: ./portfolio-next
     image: devsecops-portfolio
     container_name: devsecops-portfolio
     environment:
+      # "api" = nom du service ci-dessus, résolu par le DNS du réseau Docker Compose
       API_URL: http://api:4000
     ports:
       - "3000:3000"
     depends_on:
       api:
-        condition: service_healthy
+        condition: service_healthy   # attend que /api/health réponde
     restart: unless-stopped
     networks:
       - portfolio-net
+
 networks:
   portfolio-net:
     driver: bridge
