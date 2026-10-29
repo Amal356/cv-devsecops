@@ -88,6 +88,10 @@ docker run --rm -v "$PWD:/src" -v dependency-check-data:/usr/share/dependency-ch
 
 ![Dépendance vulnérable dans le rapport Dependency-Check](screenshots/67-dependency-check-lodash.png)
 
+Détail d'une des 20 CVE : CVE-2026-4800, injection de code (CWE-94), score CVSS 9.8, corrigée dans lodash 4.18.1.
+
+![Détail d'une CVE critique de lodash](screenshots/67b-lodash-cve-detail.png)
+
 ## Étape 69 – Le pipeline échoue sur une vulnérabilité critique
 
 Pipeline réussi sur `main` : tous les stages sont verts.
