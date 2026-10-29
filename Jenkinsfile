@@ -35,7 +35,7 @@ pipeline {
         DOCKER_USER = sh(script: 'echo "$(id -u):$(id -g)"', returnStdout: true).trim()
         // Clé NVD facultative pour accélérer Dependency-Check : après l'avoir enregistrée
         // dans Jenkins (Secret text, ID "nvd-api-key"), remplacer '' par credentials('nvd-api-key')
-        NVD_API_KEY = ''
+        NVD_API_KEY = credentials('nvd-api-key')
     }
 
     stages {
