@@ -21,6 +21,9 @@ RUN npx prisma generate
 COPY src ./src
 COPY data ./data
 
+# Fichiers lisibles par l utilisateur node, quelles que soient les permissions d origine
+RUN chmod -R a+rX /app/src /app/data /app/prisma
+
 # L'API écoute sur le port 4000
 ENV PORT=4000
 EXPOSE 4000
