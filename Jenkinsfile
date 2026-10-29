@@ -20,7 +20,7 @@ pipeline {
     options {
         disableConcurrentBuilds()
         timestamps()
-        timeout(time: 60, unit: 'MINUTES')
+        timeout(time: 120, unit: 'MINUTES')   // le 1er Dependency-Check télécharge la base NVD
         buildDiscarder(logRotator(numToKeepStr: '15'))
     }
 
