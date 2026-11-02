@@ -1,8 +1,15 @@
+# syntax=docker/dockerfile:1
+# Frontend Next.js — build multi-stage (Activité 3 étape 38, optimisé à l'Activité 5 étape 86)
+#
+#   deps   : npm ci (cache npm BuildKit, hors image)
+#   build  : next build -> .next/standalone (serveur minimal + dépendances réellement utilisées)
+#   runner : Node.js + standalone, sans npm/yarn/corepack, utilisateur non root
+
 # ---------- Étape 1 : dépendances ----------
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 # ---------- Étape 2 : build Next.js ----------
 FROM node:22-alpine AS build
@@ -20,6 +27,13 @@ RUN npm run build
 
 # ---------- Étape 3 : image finale d'exécution ----------
 FROM node:22-alpine AS runner
+
+# Correctifs Alpine ; npm, npx, yarn et corepack ne servent pas à l'exécution : supprimés
+RUN apk upgrade --no-cache \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+           /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
+
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
@@ -32,11 +46,11 @@ COPY --from=build --chown=node:node /app/.next/standalone ./
 COPY --from=build --chown=node:node /app/.next/static ./.next/static
 COPY --from=build --chown=node:node /app/public ./public
 
-# Exécution avec l'utilisateur non root "node"
 USER node
-
 EXPOSE 3000
 
+HEALTHCHECK --interval=15s --timeout=5s --start-period=15s --retries=3 \
+  CMD wget -qO- http://127.0.0.1:3000/ >/dev/null || exit 1
+
 # API_URL n'est pas fixée ici : elle est fournie au lancement du conteneur
-# (docker run -e API_URL=... ou docker compose)
 CMD ["node", "server.js"]
