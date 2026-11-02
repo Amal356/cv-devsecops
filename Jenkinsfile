@@ -1,4 +1,11 @@
-// Pipeline DevSecOps du Portfolio (Activité 2 étapes 22-24, Activité 4 étapes 61-69)
+// Pipeline DevSecOps du Portfolio (Activité 2 étapes 22-24, Activité 4 étapes 61-69, Activité 5)
+//
+// Activité 5 : build BuildKit (buildx), SBOM Syft, publication dans Harbor avec un robot account,
+// signature Cosign et barrière de déploiement qui refuse une image non signée (étapes 88, 91, 96-99, 104-105).
+// Credentials Jenkins nécessaires (voir 22-harbor/README.md et 23-supply-chain/README.md) :
+//   harbor-robot     (Username with password) : robot account du projet Harbor « devsecops »
+//   cosign-key       (Secret file)            : clé privée cosign.key
+//   cosign-password  (Secret text)            : mot de passe de cosign.key
 //
 // Prérequis sur la VM Jenkins (voir 18-pipeline-devsecops/README.md) :
 //   - Node.js 22 et npm (déjà utilisés aux étapes 23-24)
@@ -24,6 +31,13 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '15'))
     }
 
+    parameters {
+        // Étape 105 : simulation d'attaque. Une image saisie ici passe par la même barrière
+        // que les images du build : si elle n'est pas signée par notre clé, le pipeline échoue.
+        string(name: 'IMAGE_A_DEPLOYER', defaultValue: '',
+               description: 'Facultatif : image supplémentaire à faire passer par la barrière de signature (ex. localhost:8090/devsecops/devsecops-api:non-signee)')
+    }
+
     triggers {
         // Une VM en NAT n'est pas joignable par un webhook GitHub : vérification toutes les 5 min
         pollSCM('H/5 * * * *')
@@ -36,6 +50,11 @@ pipeline {
         // Clé NVD facultative pour accélérer Dependency-Check : après l'avoir enregistrée
         // dans Jenkins (Secret text, ID "nvd-api-key"), remplacer '' par credentials('nvd-api-key')
         NVD_API_KEY = credentials('nvd-api-key')
+        // Registre privé Harbor (étape 90) : HTTP sur localhost, autorisé par Docker sans configuration
+        HARBOR = 'localhost:8090'
+        HARBOR_PROJECT = 'devsecops'
+        COSIGN_IMAGE = 'ghcr.io/sigstore/cosign/cosign:v3.1.4'
+        SYFT_IMAGE = 'anchore/syft:v1.55.0'
     }
 
     stages {
@@ -57,7 +76,7 @@ pipeline {
             steps {
                 sh '''
                     docker run --rm -u "$DOCKER_USER" -v "$WORKSPACE:/src" -w /src \
-                        zricethezav/gitleaks:latest detect --no-git --source /src --config /src/.gitleaks.toml \
+                        zricethezav/gitleaks:v8.30.1 detect --no-git --source /src --config /src/.gitleaks.toml \
                         --redact --verbose --exit-code 1 \
                         --report-format json --report-path /src/$REPORTS/gitleaks.json
                 '''
@@ -69,7 +88,7 @@ pipeline {
             steps {
                 sh '''
                     docker run --rm -u "$DOCKER_USER" -e HOME=/tmp -v "$WORKSPACE:/src" -w /src \
-                        semgrep/semgrep:latest semgrep scan \
+                        semgrep/semgrep:1.182.1 semgrep scan \
                         --config p/javascript --config p/dockerfile --config p/owasp-top-ten \
                         --exclude node_modules --exclude .next --exclude "*.test.js" \
                         --severity ERROR --error --metrics off \
@@ -139,7 +158,7 @@ pipeline {
                     chmod 777 "$REPORTS"
                     docker run --rm \
                         -v "$WORKSPACE:/src" -v dependency-check-data:/usr/share/dependency-check/data \
-                        owasp/dependency-check:latest \
+                        owasp/dependency-check:13.0.0 \
                         --project "DevSecOps Portfolio" \
                         --scan /src/api/package-lock.json --scan /src/portfolio-next/package-lock.json \
                         --format HTML --format JSON --out /src/$REPORTS \
@@ -149,11 +168,17 @@ pipeline {
         }
 
         stage('Build des images Docker') {
-            // Étapes 62 et 63 : images taguées avec le hash du commit (et latest)
+            // Étapes 62-63 : images taguées avec le hash du commit (et latest)
+            // Étape 88 : BuildKit via buildx (cache mounts des Dockerfiles multi-stage)
             steps {
                 sh '''
-                    docker build -t devsecops-api:$GIT_SHA -t devsecops-api:latest api
-                    docker build -t devsecops-portfolio:$GIT_SHA -t devsecops-portfolio:latest portfolio-next
+                    for image in api portfolio; do
+                        context=api; [ "$image" = portfolio ] && context=portfolio-next
+                        start=$(date +%s)
+                        docker buildx build --load \
+                            -t devsecops-$image:$GIT_SHA -t devsecops-$image:latest "$context"
+                        echo "Temps de build devsecops-$image : $(( $(date +%s) - start )) s"
+                    done
                     docker images --filter "reference=devsecops-*" --format "table {{.Repository}}\\t{{.Tag}}\\t{{.Size}}"
                 '''
             }
@@ -166,15 +191,108 @@ pipeline {
                     for image in devsecops-api devsecops-portfolio; do
                         docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
                             -v trivy-cache:/root/.cache/trivy -v "$WORKSPACE/$REPORTS:/reports" \
-                            aquasec/trivy:latest image --scanners vuln \
+                            aquasec/trivy:0.70.0 image --scanners vuln \
                             --severity HIGH,CRITICAL --format table \
                             --output /reports/trivy-$image.txt "$image:$GIT_SHA"
                         cat "$REPORTS/trivy-$image.txt"
                         docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
                             -v trivy-cache:/root/.cache/trivy \
-                            aquasec/trivy:latest image --scanners vuln --quiet \
+                            aquasec/trivy:0.70.0 image --scanners vuln --quiet \
                             --severity CRITICAL --ignore-unfixed --exit-code 1 "$image:$GIT_SHA"
                     done
+                '''
+            }
+        }
+
+        stage('SBOM : Syft') {
+            // Étapes 96-97 : inventaire de tous les composants de chaque image (SPDX JSON), archivé
+            steps {
+                sh '''
+                    for image in api portfolio; do
+                        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$SYFT_IMAGE" \
+                            "docker:devsecops-$image:$GIT_SHA" -o spdx-json > "$REPORTS/sbom-devsecops-$image.spdx.json"
+                        echo "SBOM devsecops-$image : $(grep -c '"SPDXID"' "$REPORTS/sbom-devsecops-$image.spdx.json") éléments SPDX"
+                    done
+                '''
+            }
+        }
+
+        stage('Publication Harbor') {
+            // Étape 91 : push avec le robot account du projet (étape 92), jamais avec le compte admin
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'harbor-robot',
+                                                  usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASSWORD')]) {
+                    sh '''
+                        export DOCKER_CONFIG="$WORKSPACE/.docker-harbor"
+                        mkdir -p "$DOCKER_CONFIG"
+                        echo "$HARBOR_PASSWORD" | docker login "$HARBOR" -u "$HARBOR_USER" --password-stdin
+                        : > "$REPORTS/images-harbor.txt"
+                        for image in api portfolio; do
+                            ref="$HARBOR/$HARBOR_PROJECT/devsecops-$image"
+                            docker tag "devsecops-$image:$GIT_SHA" "$ref:$GIT_SHA"
+                            docker tag "devsecops-$image:$GIT_SHA" "$ref:latest"
+                            docker push "$ref:$GIT_SHA"
+                            docker push "$ref:latest"
+                            digest=$(docker inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$ref:$GIT_SHA" | grep "^$ref@" | head -1)
+                            echo "$digest" >> "$REPORTS/images-harbor.txt"
+                        done
+                        cat "$REPORTS/images-harbor.txt"
+                    '''
+                }
+            }
+        }
+
+        stage('Signature : Cosign') {
+            // Étape 99 : signature de chaque image (par digest) + SBOM attaché en attestation signée
+            steps {
+                withCredentials([file(credentialsId: 'cosign-key', variable: 'COSIGN_KEY_FILE'),
+                                 string(credentialsId: 'cosign-password', variable: 'COSIGN_PASSWORD')]) {
+                    sh '''
+                        export DOCKER_CONFIG="$WORKSPACE/.docker-harbor"
+                        cosign() {
+                            docker run --rm --network host -u "$DOCKER_USER" \
+                                -e HOME=/tmp -e COSIGN_PASSWORD -e DOCKER_CONFIG=/tmp/docker \
+                                -v "$DOCKER_CONFIG:/tmp/docker:ro" -v "$COSIGN_KEY_FILE:/tmp/cosign.key:ro" \
+                                -v "$WORKSPACE/$REPORTS:/reports:ro" \
+                                "$COSIGN_IMAGE" "$@"
+                        }
+                        while read -r ref; do
+                            image=$(echo "$ref" | sed 's#.*/devsecops-\\([a-z]*\\)@.*#\\1#')
+                            cosign sign --yes --allow-http-registry --key /tmp/cosign.key "$ref"
+                            cosign attest --yes --allow-http-registry --key /tmp/cosign.key \
+                                --type spdxjson --predicate "/reports/sbom-devsecops-$image.spdx.json" "$ref"
+                        done < "$REPORTS/images-harbor.txt"
+                    '''
+                }
+            }
+        }
+
+        stage('Déploiement : vérification de signature') {
+            // Étapes 100 et 104 : aucune image n'est déployée sans signature valide de NOTRE clé.
+            // Étape 105 : le paramètre IMAGE_A_DEPLOYER permet de tester une image non signée.
+            steps {
+                sh '''
+                    export DOCKER_CONFIG="$WORKSPACE/.docker-harbor"
+                    cp "$REPORTS/images-harbor.txt" "$REPORTS/a-verifier.txt"
+                    if [ -n "$IMAGE_A_DEPLOYER" ]; then echo "$IMAGE_A_DEPLOYER" >> "$REPORTS/a-verifier.txt"; fi
+                    refus=0
+                    while read -r ref; do
+                        echo "=== cosign verify $ref"
+                        if docker run --rm --network host -u "$DOCKER_USER" \
+                               -e HOME=/tmp -e DOCKER_CONFIG=/tmp/docker -v "$DOCKER_CONFIG:/tmp/docker:ro" \
+                               -v "$WORKSPACE/23-supply-chain/cosign.pub:/tmp/cosign.pub:ro" \
+                               "$COSIGN_IMAGE" verify --allow-http-registry --key /tmp/cosign.pub "$ref" > /dev/null; then
+                            echo "SIGNATURE VALIDE : $ref"
+                        else
+                            echo "REFUSÉ : $ref n'est pas signée par la clé du projet"
+                            refus=1
+                        fi
+                    done < "$REPORTS/a-verifier.txt"
+                    if [ "$refus" -ne 0 ]; then
+                        echo "Déploiement bloqué : au moins une image n'a pas de signature valide."
+                        exit 1
+                    fi
+                    echo "Toutes les images sont signées : déploiement autorisé."
                 '''
             }
         }
@@ -184,6 +302,7 @@ pipeline {
         always {
             // Les rapports restent consultables dans Jenkins (Build > Artifacts)
             archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
+            sh 'rm -rf "$WORKSPACE/.docker-harbor"'   // identifiants Harbor : jamais conservés dans le workspace
         }
         success {
             echo "Pipeline réussi : images devsecops-api:${env.GIT_SHA} et devsecops-portfolio:${env.GIT_SHA}"
