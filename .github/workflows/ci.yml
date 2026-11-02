@@ -1,0 +1,368 @@
+# CI DevSecOps du Portfolio (Activité 5, étapes 70 à 73, 76, 77, 84, 89, 96 à 104)
+#
+# Sur chaque push et chaque Pull Request :
+#   tests API + frontend, secrets (Gitleaks), SAST (Semgrep), dépendances (npm audit + Dependency Review),
+#   construction des deux images et scan Trivy.
+# Sur un push vers main, si tous les contrôles passent :
+#   release semantic-release, images multi-architecture (amd64 + arm64) publiées dans GHCR,
+#   SBOM Syft, signature Cosign (keyless), attestation de provenance, puis vérification avant « déploiement ».
+#
+# Sécurité de la chaîne CI/CD elle-même (étapes 76-77) :
+#   - le GITHUB_TOKEN n'a aucun droit par défaut (permissions: {}), chaque job demande le strict nécessaire ;
+#   - toutes les Actions tierces sont épinglées par SHA de commit (le commentaire indique la version).
+
+name: CI DevSecOps
+
+on:
+  push:
+    branches: [main] # les branches de travail sont testées par leur Pull Request
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  REGISTRY: ghcr.io/amal356
+  NODE_VERSION: "22"
+
+jobs:
+  # ---------------------------------------------------------------- Étape 70 : tests
+  tests-api:
+    name: tests-api
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: api/package-lock.json
+      - run: npm ci
+      - run: npm test
+
+  tests-frontend:
+    name: tests-frontend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: portfolio-next
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: portfolio-next/package-lock.json
+      - run: npm ci
+      - run: npm test -- --ci
+      - run: npm run build
+
+  # ---------------------------------------------------------------- Étape 71 : secrets, SAST, dépendances
+  secrets:
+    name: secrets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # tout l'historique : un secret supprimé reste visible dans les anciens commits
+          persist-credentials: false
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_ENABLE_COMMENTS: "false" # pas de commentaire de PR : pas besoin de pull-requests: write
+
+  sast:
+    name: sast
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # publication du SARIF dans l'onglet Security (comparaison avec CodeQL, étape 74)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Installer Semgrep (version figée)
+        run: pip install semgrep==1.182.1
+      - name: "Semgrep : toutes les alertes (rapport SARIF)"
+        run: |
+          semgrep scan --config p/javascript --config p/dockerfile --config p/owasp-top-ten \
+            --exclude node_modules --exclude .next --exclude '*.test.js' \
+            --metrics off --sarif --output semgrep.sarif
+      - name: Publier les résultats dans GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+      - name: Barrière de sécurité (sévérité ERROR)
+        run: |
+          semgrep scan --config p/javascript --config p/dockerfile --config p/owasp-top-ten \
+            --exclude node_modules --exclude .next --exclude '*.test.js' \
+            --severity ERROR --error --metrics off
+
+  dependencies:
+    name: dependencies
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: npm audit (API)
+        working-directory: api
+        run: npm audit --omit=dev --audit-level=critical
+      - name: npm audit (frontend)
+        working-directory: portfolio-next
+        run: npm audit --omit=dev --audit-level=critical
+      - name: Dependency Review (nouvelles dépendances de la PR)
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: critical
+          comment-summary-in-pr: never
+
+  # ---------------------------------------------------------------- Étapes 72-73 : images + Trivy
+  image-scan:
+    name: image-scan (${{ matrix.image }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read         # lecture du code
+      security-events: write # envoi du SARIF Trivy dans l'onglet Security
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: api
+            context: api
+          - image: portfolio
+            context: portfolio-next
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Construire l'image (BuildKit)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.context }}
+          load: true
+          tags: devsecops-${{ matrix.image }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+      - name: "Trivy : rapport SARIF (HIGH et CRITICAL)"
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: devsecops-${{ matrix.image }}:${{ github.sha }}
+          scanners: vuln
+          severity: HIGH,CRITICAL
+          format: sarif
+          output: trivy-${{ matrix.image }}.sarif
+      - name: Publier les résultats dans GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: trivy-${{ matrix.image }}.sarif
+          category: trivy-${{ matrix.image }}
+      - name: Barrière de sécurité (CRITICAL corrigeable)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: devsecops-${{ matrix.image }}:${{ github.sha }}
+          scanners: vuln
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+          skip-setup-trivy: true
+
+  # ---------------------------------------------------------------- Étape 82 : Conventional Commits
+  commits:
+    name: commits
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm ci
+      - name: Vérifier les messages de commit de la PR
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: npx commitlint --from "$BASE" --to "$HEAD" --verbose
+
+  # ---------------------------------------------------------------- Étapes 83-84 : semantic-release
+  release:
+    name: release
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [tests-api, tests-frontend, secrets, sast, dependencies, image-scan]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # création du tag et de la release GitHub
+    outputs:
+      version: ${{ steps.semrel.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm ci
+      - name: semantic-release
+        id: semrel
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
+
+  # ---------------------------------------------------------------- Étapes 89, 96-101 : publication signée
+  publish:
+    name: publish (${{ matrix.image }})
+    needs: release
+    if: needs.release.outputs.version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # ajout du SBOM à la release (étape 98)
+      packages: write       # push dans GHCR
+      id-token: write       # signature Cosign keyless et attestation (OIDC)
+      attestations: write   # attestation de provenance (étape 101)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: api
+            context: api
+          - image: portfolio
+            context: portfolio-next
+    env:
+      IMAGE: ghcr.io/amal356/devsecops-${{ matrix.image }}
+      VERSION: ${{ needs.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Construire et publier (amd64 + arm64)
+        id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.context }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ env.VERSION }}
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ env.VERSION }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+      - name: Image multi-architecture — étape 89
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: docker buildx imagetools inspect "${IMAGE}@${DIGEST}"
+
+      - name: SBOM Syft (SPDX JSON) — étapes 96-98
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          image: ${{ env.IMAGE }}@${{ steps.build.outputs.digest }}
+          format: spdx-json
+          output-file: sbom-${{ matrix.image }}-${{ env.VERSION }}.spdx.json
+          artifact-name: sbom-${{ matrix.image }}.spdx.json
+          upload-release-assets: false
+      - name: Attacher le SBOM à la release GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_NAME: ${{ matrix.image }}
+        run: gh release upload "v${VERSION}" "sbom-${IMAGE_NAME}-${VERSION}.spdx.json" --clobber --repo "$GITHUB_REPOSITORY"
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Signer l'image avec Cosign (keyless, OIDC GitHub) — étape 99
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes --recursive "${IMAGE}@${DIGEST}"
+
+      - name: Attestation de provenance SLSA — étape 101
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+  # ---------------------------------------------------------------- Étapes 100, 102, 104 : barrière avant déploiement
+  verify-before-deploy:
+    name: verify-before-deploy
+    needs: [release, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read      # aucun accès en écriture
+      packages: read      # lecture des images dans GHCR
+      attestations: read  # lecture des attestations de provenance
+    env:
+      VERSION: ${{ needs.release.outputs.version }}
+    steps:
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Vérifier signature et provenance des deux images
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          for image in api portfolio; do
+            ref="${REGISTRY}/devsecops-${image}:${VERSION}"
+            echo "::group::cosign verify ${ref}"
+            cosign verify "${ref}" \
+              --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/ci.yml@refs/heads/main" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com
+            echo "::endgroup::"
+            echo "::group::gh attestation verify ${ref}"
+            gh attestation verify "oci://${ref}" --repo "$GITHUB_REPOSITORY"
+            echo "::endgroup::"
+          done
+      - name: Déploiement (simulé)
+        run: |
+          echo "Images signées et de provenance vérifiée : déploiement de la version ${VERSION} autorisé."
