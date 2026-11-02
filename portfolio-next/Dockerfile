@@ -1,11 +1,11 @@
 # ---------- Étape 1 : dépendances ----------
-FROM node:22-alpine AS deps
+FROM node:25-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
 # ---------- Étape 2 : build Next.js ----------
-FROM node:22-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 # Adresse de l'API vue par le navigateur (formulaire de contact), intégrée au build.
@@ -19,7 +19,7 @@ COPY . .
 RUN npm run build
 
 # ---------- Étape 3 : image finale d'exécution ----------
-FROM node:22-alpine AS runner
+FROM node:25-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
