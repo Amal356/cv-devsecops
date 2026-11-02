@@ -1,39 +1,53 @@
-# Image officielle Node.js 22 (Alpine : image légère)
-FROM node:22-alpine
+# syntax=docker/dockerfile:1
+# API Express — build multi-stage (Activité 5, étape 86)
+#
+#   deps    : installe les dépendances de production, génère le client Prisma, prépare le code
+#   runtime : image finale = Node.js + /app, sans npm, sans cache npm ni cache Prisma
+#
+# BuildKit (étape 88) : les caches npm et Prisma sont des « cache mounts » réutilisés d'un build
+# à l'autre, mais jamais écrits dans une couche de l'image.
 
-# OpenSSL est requis par les moteurs Prisma sur Alpine
+# ---------- Étape 1 : dépendances et code ----------
+FROM node:22-alpine AS deps
 RUN apk add --no-cache openssl
-
-# Mode production : Express désactive les messages de débogage
-ENV NODE_ENV=production
-
 WORKDIR /app
+ENV CHECKPOINT_DISABLE=1 PRISMA_HIDE_UPDATE_MESSAGE=1
 
-# Dépendances d'abord : cette couche reste en cache tant que package*.json ne change pas
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
-
-# Schéma et migrations Prisma, puis génération du client Prisma (étape 55)
 COPY prisma ./prisma
-RUN npx prisma generate
+RUN --mount=type=cache,target=/root/.npm \
+    --mount=type=cache,target=/root/.cache/prisma \
+    npm ci --omit=dev && npx prisma generate
 
-# Code de l'API
 COPY src ./src
 COPY data ./data
+# Lisible par tous quelles que soient les permissions d'origine (dossiers en 700 sur la VM, activité 4)
+RUN chmod -R a+rX /app
 
-# Fichiers lisibles par l utilisateur node, quelles que soient les permissions d origine
-RUN chmod -R a+rX /app/src /app/data /app/prisma
+# ---------- Étape 2 : image d'exécution ----------
+FROM node:22-alpine AS runtime
 
-# L'API écoute sur le port 4000
-ENV PORT=4000
+# Correctifs de sécurité Alpine + OpenSSL (moteurs Prisma) ; suppression de npm, npx, yarn et corepack :
+# inutiles à l'exécution, ils apportent à eux seuls une bonne partie des vulnérabilités signalées par Trivy
+RUN apk upgrade --no-cache && apk add --no-cache openssl \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+           /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn-*
+
+ENV NODE_ENV=production \
+    PORT=4000 \
+    CHECKPOINT_DISABLE=1 \
+    PRISMA_HIDE_UPDATE_MESSAGE=1
+WORKDIR /app
+
+# Fichiers appartenant à root, en lecture seule pour l'utilisateur node : l'API ne peut pas modifier son code
+COPY --from=deps /app /app
+
+USER node
 EXPOSE 4000
 
-# Exécution avec l'utilisateur non root "node" fourni par l'image
-USER node
-
-# Docker vérifie régulièrement que l'API répond sur /api/health
 HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=3 \
   CMD wget -qO- http://127.0.0.1:4000/api/health || exit 1
 
-# Au démarrage : application des migrations en attente, puis lancement de l'API
-CMD ["sh", "-c", "npx prisma migrate deploy && exec node src/server.js"]
+# Migrations Prisma en attente, puis démarrage de l'API (npx n'existe plus : appel direct du CLI)
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && exec node src/server.js"]
