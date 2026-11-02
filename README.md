@@ -35,6 +35,14 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 - [Étapes 57 à 60 – Tests applicatifs](17-tests/README.md)
 - [Étapes 61 à 69 – Pipeline DevSecOps Jenkins](18-pipeline-devsecops/README.md)
 
+### Activité 5 – GitHub Actions, Git Workflow, images, Harbor et supply chain
+
+- [Étapes 70 à 78 – GitHub Actions et sécurité GitHub](19-github-actions/README.md)
+- [Étapes 79 à 84 – Git Workflow, Conventional Commits, semantic-release](20-git-workflow/README.md)
+- [Étapes 85 à 89 – Optimisation des images](21-optimisation-images/README.md)
+- [Étapes 90 à 95 – Registre privé Harbor](22-harbor/README.md)
+- [Étapes 96 à 105 – Software Supply Chain Security](23-supply-chain/README.md)
+
 ## Architecture finale
 
 ```
