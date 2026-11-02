@@ -1,5 +1,5 @@
 # Image officielle Node.js 22 (Alpine : image légère)
-FROM node:22-alpine
+FROM node:25-alpine
 
 # OpenSSL est requis par les moteurs Prisma sur Alpine
 RUN apk add --no-cache openssl
