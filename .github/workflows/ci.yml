@@ -30,3 +30,43 @@ jobs:
           node-version: 22
       - run: npm ci
       - run: npm test
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install semgrep==1.182.1
+      - run: |
+          semgrep scan --config p/javascript --config p/dockerfile --config p/owasp-top-ten \
+            --exclude node_modules --exclude .next --exclude '*.test.js' \
+            --severity ERROR --error --metrics off
+
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm audit --omit=dev --audit-level=critical
+        working-directory: api
+      - run: npm audit --omit=dev --audit-level=critical
+        working-directory: portfolio-next
+      - if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: critical
