@@ -1,0 +1,14 @@
+{
+  "name": "cv-devsecops",
+  "private": true,
+  "description": "Outillage de release : Conventional Commits, Semantic Versioning, changelog et releases GitHub automatiques",
+  "scripts": {
+    "release": "semantic-release"
+  },
+  "devDependencies": {
+    "@semantic-release/changelog": "7.0.0",
+    "@semantic-release/exec": "7.1.0",
+    "conventional-changelog-conventionalcommits": "10.4.1",
+    "semantic-release": "25.0.9"
+  }
+}
