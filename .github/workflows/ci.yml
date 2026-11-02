@@ -44,13 +44,28 @@ jobs:
 
   sast:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: pip install semgrep==1.182.1
-      - run: |
+      - name: Semgrep - rapport SARIF (toutes les alertes)
+        run: |
+          semgrep scan --config p/javascript --config p/dockerfile --config p/owasp-top-ten \
+            --exclude node_modules --exclude .next --exclude '*.test.js' \
+            --metrics off --sarif --output semgrep.sarif
+      - name: Envoyer les alertes Semgrep dans Code scanning
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+      - name: Semgrep - blocage sur les erreurs
+        run: |
           semgrep scan --config p/javascript --config p/dockerfile --config p/owasp-top-ten \
             --exclude node_modules --exclude .next --exclude '*.test.js' \
             --severity ERROR --error --metrics off
