@@ -80,5 +80,18 @@ docker buildx imagetools inspect ghcr.io/amal356/devsecops-api:1.0.1
 Résultat (copié du job `publish (api)`) :
 
 ```text
-à compléter
+Name:      ghcr.io/amal356/devsecops-api:1.0.1
+MediaType: application/vnd.oci.image.index.v1+json
+Digest:    sha256:40e9a01a168b0a36141758c64da4717bd384dff4906ce2a40050bdd48b01ac5d
+
+Manifests:
+  Name:      ghcr.io/amal356/devsecops-api:1.0.1@sha256:659bda414fe172702809fad7421f987abe5a9b924a5cd2e23fd43fa5a118d846
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/amd64
+
+  Name:      ghcr.io/amal356/devsecops-api:1.0.1@sha256:c07f08333c45506373b2f8b222d27d9437241c9f5a6a0247cc9b0095502c7e12
+  MediaType: application/vnd.oci.image.manifest.v1+json
+  Platform:  linux/arm64
 ```
+
+![imagetools inspect](screenshots/89-imagetools.png)
