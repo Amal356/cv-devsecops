@@ -24,6 +24,13 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '15'))
     }
 
+    parameters {
+        // Activité 5, étape 105 : simulation d'attaque. L'image saisie passe par la même barrière
+        // de signature que les images du build : si elle n'est pas signée par notre clé, le pipeline échoue.
+        string(name: 'IMAGE_A_DEPLOYER', defaultValue: '',
+               description: 'Facultatif : image à faire passer par la barrière de signature (ex. localhost:8090/devsecops/devsecops-api:non-signee)')
+    }
+
     triggers {
         // Une VM en NAT n'est pas joignable par un webhook GitHub : vérification toutes les 5 min
         pollSCM('H/5 * * * *')
@@ -39,6 +46,8 @@ pipeline {
         // Registre privé Harbor (Activité 5, étape 90) : HTTP sur localhost, autorisé par Docker sans configuration
         HARBOR = 'localhost:8090'
         HARBOR_PROJECT = 'devsecops'
+        COSIGN_IMAGE = 'ghcr.io/sigstore/cosign/cosign:v3.1.4'
+        SYFT_IMAGE = 'anchore/syft:v1.55.0'
     }
 
     stages {
@@ -182,6 +191,19 @@ pipeline {
             }
         }
 
+        stage('SBOM : Syft') {
+            // Activité 5, étapes 96-97 : inventaire de tous les composants de chaque image (SPDX JSON), archivé
+            steps {
+                sh '''
+                    for image in api portfolio; do
+                        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$SYFT_IMAGE" \
+                            "docker:devsecops-$image:$GIT_SHA" -o spdx-json > "$REPORTS/sbom-devsecops-$image.spdx.json"
+                        echo "SBOM devsecops-$image : $(grep -c '"SPDXID"' "$REPORTS/sbom-devsecops-$image.spdx.json") éléments SPDX"
+                    done
+                '''
+            }
+        }
+
         stage('Publication Harbor') {
             // Activité 5, étape 91 : push avec le robot account du projet (étape 92), jamais avec le compte admin
             steps {
@@ -205,6 +227,63 @@ pipeline {
                         cat "$REPORTS/images-harbor.txt"
                     '''
                 }
+            }
+        }
+
+        stage('Signature : Cosign') {
+            // Activité 5, étape 99 : signature de chaque image (par digest) + SBOM attaché en attestation signée
+            steps {
+                withCredentials([file(credentialsId: 'cosign-key', variable: 'COSIGN_KEY_FILE'),
+                                 string(credentialsId: 'cosign-password', variable: 'COSIGN_PASSWORD')]) {
+                    sh '''
+                        export DOCKER_CONFIG="$WORKSPACE/.docker-harbor"
+                        cosign() {
+                            docker run --rm --network host -u "$DOCKER_USER" \
+                                -e HOME=/tmp -e COSIGN_PASSWORD -e DOCKER_CONFIG=/tmp/docker \
+                                -v "$DOCKER_CONFIG:/tmp/docker:ro" -v "$COSIGN_KEY_FILE:/tmp/cosign.key:ro" \
+                                -v "$WORKSPACE/$REPORTS:/reports:ro" \
+                                "$COSIGN_IMAGE" "$@"
+                        }
+                        while read -r ref; do
+                            image=${ref#*/devsecops-}; image=${image%%@*}
+                            echo "=== Signature de $ref"
+                            cosign sign --yes --allow-http-registry --key /tmp/cosign.key "$ref"
+                            echo "=== SBOM attaché en attestation signée"
+                            cosign attest --yes --allow-http-registry --key /tmp/cosign.key \
+                                --type spdxjson --predicate "/reports/sbom-devsecops-$image.spdx.json" "$ref"
+                        done < "$REPORTS/images-harbor.txt"
+                    '''
+                }
+            }
+        }
+
+        stage('Déploiement : vérification de signature') {
+            // Activité 5, étapes 100 et 104 : aucune image n'est déployée sans signature valide de NOTRE clé.
+            // Étape 105 : le paramètre IMAGE_A_DEPLOYER permet de tester une image non signée.
+            steps {
+                sh '''
+                    export DOCKER_CONFIG="$WORKSPACE/.docker-harbor"
+                    cp "$REPORTS/images-harbor.txt" "$REPORTS/a-verifier.txt"
+                    if [ -n "$IMAGE_A_DEPLOYER" ]; then echo "$IMAGE_A_DEPLOYER" >> "$REPORTS/a-verifier.txt"; fi
+                    refus=0
+                    while read -r ref; do
+                        echo "=== cosign verify $ref"
+                        if docker run --rm --network host -u "$DOCKER_USER" \
+                               -e HOME=/tmp -e DOCKER_CONFIG=/tmp/docker -v "$DOCKER_CONFIG:/tmp/docker:ro" \
+                               -v "$WORKSPACE/23-supply-chain/cosign.pub:/tmp/cosign.pub:ro" \
+                               "$COSIGN_IMAGE" verify --allow-http-registry --key /tmp/cosign.pub "$ref" > /dev/null; then
+                            echo "SIGNATURE VALIDE : $ref"
+                        else
+                            echo "REFUSÉ : $ref n'est pas signée par la clé du projet"
+                            refus=1
+                        fi
+                    done < "$REPORTS/a-verifier.txt"
+                    if [ "$refus" -ne 0 ]; then
+                        echo "Déploiement bloqué : au moins une image n'a pas de signature valide."
+                        exit 1
+                    fi
+                    echo "Toutes les images sont signées : déploiement autorisé."
+                '''
             }
         }
     }

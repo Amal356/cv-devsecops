@@ -166,15 +166,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
 
-  # ---------------------------------------------------------------- Étape 89 : images multi-arch dans GHCR
+  # ---------------------------------------------------------------- Étapes 89, 96-101 : images multi-arch signées dans GHCR
   publish:
     name: publish (${{ matrix.image }})
     needs: release
     if: needs.release.outputs.version != ''
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      packages: write # push dans ghcr.io
+      contents: write       # ajout du SBOM à la release (étape 98)
+      packages: write       # push dans GHCR
+      id-token: write       # signature Cosign keyless et attestation (jeton OIDC)
+      attestations: write   # attestation de provenance (étape 101)
     strategy:
       fail-fast: false
       matrix:
@@ -198,6 +200,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build et push multi-architecture (amd64 + arm64)
+        id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ${{ matrix.context }}
@@ -210,7 +213,75 @@ jobs:
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ env.VERSION }}
+            org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
       - name: Index multi-architecture (imagetools inspect)
-        run: docker buildx imagetools inspect "$IMAGE:$VERSION"
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: docker buildx imagetools inspect "${IMAGE}@${DIGEST}"
+
+      - name: SBOM Syft (SPDX JSON), conservé comme artefact
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          image: ${{ env.IMAGE }}@${{ steps.build.outputs.digest }}
+          format: spdx-json
+          output-file: sbom-${{ matrix.image }}-${{ env.VERSION }}.spdx.json
+          artifact-name: sbom-${{ matrix.image }}.spdx.json
+          upload-release-assets: false
+      - name: SBOM attaché à la release GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_NAME: ${{ matrix.image }}
+        run: gh release upload "v${VERSION}" "sbom-${IMAGE_NAME}-${VERSION}.spdx.json" --clobber --repo "$GITHUB_REPOSITORY"
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Signature Cosign keyless (identité OIDC du workflow)
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign sign --yes --recursive "${IMAGE}@${DIGEST}"
+
+      - name: Attestation de provenance SLSA
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+  # ---------------------------------------------------------------- Étapes 100, 102, 104 : barrière avant déploiement
+  verify-before-deploy:
+    name: verify-before-deploy
+    needs: [release, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read      # aucun accès en écriture
+      packages: read      # lecture des images dans GHCR
+      attestations: read  # lecture des attestations de provenance
+    env:
+      VERSION: ${{ needs.release.outputs.version }}
+    steps:
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Vérifier signature et provenance des deux images
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          for image in api portfolio; do
+            ref="ghcr.io/amal356/devsecops-${image}:${VERSION}"
+            echo "::group::cosign verify ${ref}"
+            cosign verify "${ref}" \
+              --certificate-identity "https://github.com/${GITHUB_REPOSITORY}/.github/workflows/ci.yml@refs/heads/main" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com
+            echo "::endgroup::"
+            echo "::group::gh attestation verify ${ref}"
+            gh attestation verify "oci://${ref}" --repo "$GITHUB_REPOSITORY"
+            echo "::endgroup::"
+          done
+      - name: Déploiement (simulé)
+        run: |
+          echo "Images signées et de provenance vérifiée, déploiement de la version ${VERSION} autorisé."
