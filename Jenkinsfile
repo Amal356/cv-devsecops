@@ -36,6 +36,9 @@ pipeline {
         // Clé NVD facultative pour accélérer Dependency-Check : après l'avoir enregistrée
         // dans Jenkins (Secret text, ID "nvd-api-key"), remplacer '' par credentials('nvd-api-key')
         NVD_API_KEY = credentials('nvd-api-key')
+        // Registre privé Harbor (Activité 5, étape 90) : HTTP sur localhost, autorisé par Docker sans configuration
+        HARBOR = 'localhost:8090'
+        HARBOR_PROJECT = 'devsecops'
     }
 
     stages {
@@ -178,12 +181,39 @@ pipeline {
                 '''
             }
         }
+
+        stage('Publication Harbor') {
+            // Activité 5, étape 91 : push avec le robot account du projet (étape 92), jamais avec le compte admin
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'harbor-robot',
+                                                  usernameVariable: 'HARBOR_USER', passwordVariable: 'HARBOR_PASSWORD')]) {
+                    sh '''
+                        export DOCKER_CONFIG="$WORKSPACE/.docker-harbor"
+                        mkdir -p "$DOCKER_CONFIG"
+                        echo "$HARBOR_PASSWORD" | docker login "$HARBOR" -u "$HARBOR_USER" --password-stdin
+                        : > "$REPORTS/images-harbor.txt"
+                        for image in api portfolio; do
+                            ref="$HARBOR/$HARBOR_PROJECT/devsecops-$image"
+                            docker tag "devsecops-$image:$GIT_SHA" "$ref:$GIT_SHA"
+                            docker tag "devsecops-$image:$GIT_SHA" "$ref:latest"
+                            docker push "$ref:$GIT_SHA"
+                            docker push "$ref:latest"
+                            digest=$(docker inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$ref:$GIT_SHA" | grep "^$ref@" | head -1)
+                            echo "$digest" >> "$REPORTS/images-harbor.txt"
+                        done
+                        echo "Images publiées dans Harbor :"
+                        cat "$REPORTS/images-harbor.txt"
+                    '''
+                }
+            }
+        }
     }
 
     post {
         always {
             // Les rapports restent consultables dans Jenkins (Build > Artifacts)
             archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
+            sh 'rm -rf "$WORKSPACE/.docker-harbor"'   // identifiants Harbor : jamais conservés dans le workspace
         }
         success {
             echo "Pipeline réussi : images devsecops-api:${env.GIT_SHA} et devsecops-portfolio:${env.GIT_SHA}"
