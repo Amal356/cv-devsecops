@@ -1,0 +1,6 @@
+name: devsecops-pulumi
+description: Activité 6, étape 133 - bucket S3 dans Floci, décrit en TypeScript
+runtime:
+  name: nodejs
+  options:
+    typescript: true

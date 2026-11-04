@@ -43,6 +43,13 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 - [Étapes 90 à 95 – Registre privé Harbor](22-harbor/README.md)
 - [Étapes 96 à 105 – Sécurité de la supply chain (SBOM, Cosign, SLSA)](23-supply-chain/README.md)
 
+### Activité 6 – Cloud local, Terraform et automatisation
+
+- [Étapes 106 à 117 – Cloud local avec Floci](24-floci/README.md)
+- [Étapes 118 à 123 – Introduction à Terraform](25-terraform/README.md)
+- [Étapes 124 à 133 – Terraform avancé (modules, state, IaC scan, OpenTofu, Terragrunt, Pulumi)](26-terraform-avance/README.md)
+- [Étapes 134 et 135 – Automatisation Terraform + Ansible](27-terraform-ansible/README.md)
+
 ## Architecture finale
 
 ```
