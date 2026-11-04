@@ -79,6 +79,27 @@ jobs:
       - name: Tests d'intégration API -> SQS + S3
         run: npm run test:floci
 
+  # ---------------------------------------------------------------- Activité 6, étapes 129-130 : analyse du code Terraform (IaC)
+  iac-scan:
+    name: iac-scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Trivy IaC (Terraform) - bloque les erreurs HIGH et CRITICAL
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_MISCONFIG_SCANNERS: terraform   # uniquement le code Terraform
+        with:
+          scan-type: config
+          scan-ref: .
+          trivyignores: .trivyignore
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+
   secrets:
     runs-on: ubuntu-latest
     permissions:

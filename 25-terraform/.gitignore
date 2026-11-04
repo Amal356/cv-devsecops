@@ -1,0 +1,6 @@
+# Terraform : dossier des providers et fichiers d'état (peuvent contenir des valeurs sensibles)
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfplan
