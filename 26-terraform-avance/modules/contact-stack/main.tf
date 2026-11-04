@@ -25,10 +25,10 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "contacts" {
 
 resource "aws_s3_bucket_public_access_block" "contacts" {
   bucket                  = aws_s3_bucket.contacts.id
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
 }
 
 # ---------- SQS : notifications des nouveaux messages
@@ -36,7 +36,7 @@ resource "aws_sqs_queue" "notifications" {
   name                       = "${var.nom}-contact-notifications"
   message_retention_seconds  = var.retention_messages_jours * 86400
   visibility_timeout_seconds = 30
-  sqs_managed_sse_enabled    = true
+  sqs_managed_sse_enabled    = false
 }
 
 # ---------- DynamoDB : table des contacts
@@ -52,6 +52,6 @@ resource "aws_dynamodb_table" "contacts" {
   }
 
   server_side_encryption {
-    enabled = true
+    enabled = false
   }
 }
