@@ -14,3 +14,4 @@ reports/
 # Vagrant
 .vagrant/
 cosign.key
+.env.infra

@@ -1,0 +1,71 @@
+# Activité 6, étape 134 : Ansible configure le serveur et y déploie l'application.
+# Il lit les noms réels des ressources dans terraform_vars.yml, écrit par Terraform.
+- name: Configuration du serveur et déploiement Docker
+  hosts: serveurs
+  gather_facts: true
+  vars_files:
+    - terraform_vars.yml
+  vars:
+    projet_dir: "{{ lookup('env', 'HOME') }}/cv-devsecops"
+    compose: >-
+      docker compose -f docker-compose.fullstack.yml
+      --env-file .env --env-file .env.infra
+
+  tasks:
+    - name: Le serveur est une Ubuntu
+      ansible.builtin.assert:
+        that: ansible_facts['distribution'] == "Ubuntu"
+        fail_msg: "Ce playbook vise Ubuntu"
+
+    - name: Docker et Docker Compose sont disponibles
+      ansible.builtin.command: docker compose version
+      changed_when: false
+
+    - name: Le fichier .env (mot de passe PostgreSQL, hors Git) existe
+      ansible.builtin.stat:
+        path: "{{ projet_dir }}/.env"
+      register: env_principal
+      failed_when: not env_principal.stat.exists
+
+    - name: Configuration de l'API avec les ressources créées par Terraform
+      ansible.builtin.template:
+        src: templates/env.infra.j2
+        dest: "{{ projet_dir }}/.env.infra"
+        mode: "0600"
+
+    - name: Démarrage de Floci, PostgreSQL, de l'API et du portfolio
+      ansible.builtin.command:
+        cmd: "{{ compose }} up -d --wait"
+        chdir: "{{ projet_dir }}"
+      register: demarrage
+      changed_when: "'Started' in demarrage.stderr or 'Recreated' in demarrage.stderr"
+
+    - name: L'API répond
+      ansible.builtin.uri:
+        url: http://localhost:4000/api/health
+        status_code: 200
+      register: sante
+      retries: 10
+      delay: 3
+      until: sante.status == 200
+
+    - name: Test de bout en bout - un message de contact
+      ansible.builtin.uri:
+        url: http://localhost:4000/api/contact
+        method: POST
+        body_format: json
+        body:
+          name: "Ansible"
+          email: "ansible@example.test"
+          message: "Message envoyé par le playbook après le déploiement"
+        status_code: 201
+      register: contact
+
+    - name: La notification est arrivée dans la file SQS créée par Terraform
+      ansible.builtin.assert:
+        that:
+          - contact.json.data.notification.sqs
+          - contact.json.data.notification.s3
+        success_msg: >-
+          Message {{ contact.json.data.id }} : PostgreSQL + SQS {{ contact_queue_name }}
+          + S3 {{ contact_bucket }}

@@ -52,8 +52,8 @@ services:
       AWS_REGION: us-east-1
       AWS_ACCESS_KEY_ID: test        # identifiants fictifs acceptés par Floci (aucun compte AWS)
       AWS_SECRET_ACCESS_KEY: test
-      CONTACT_QUEUE_NAME: contact-notifications
-      CONTACT_BUCKET: devsecops-contacts
+      CONTACT_QUEUE_NAME: ${CONTACT_QUEUE_NAME:-contact-notifications}
+      CONTACT_BUCKET: ${CONTACT_BUCKET:-devsecops-contacts}
     ports:
       - "4000:4000"   # le navigateur envoie le formulaire de contact directement à l'API
     depends_on:
