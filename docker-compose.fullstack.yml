@@ -25,6 +25,19 @@ services:
     networks:
       - portfolio-net
 
+  floci:
+    # Émulateur AWS local (Activité 6, étape 115) : SQS et S3 pour le formulaire de contact
+    image: floci/floci:2.4.0
+    container_name: floci
+    user: root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock   # nécessaire pour les fonctions Lambda (étape 112)
+    ports:
+      - "127.0.0.1:4566:4566"   # AWS CLI et Terraform depuis la VM uniquement
+    restart: unless-stopped
+    networks:
+      - portfolio-net
+
   api:
     build: ./api
     image: devsecops-api
@@ -34,11 +47,20 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-amal}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-portfolio_db}?schema=public
       # Origine du navigateur qui affiche le portfolio (formulaire de contact)
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      # Floci (Activité 6, étape 114) : notification SQS + archive S3 de chaque message de contact
+      AWS_ENDPOINT_URL: http://floci:4566
+      AWS_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test        # identifiants fictifs acceptés par Floci (aucun compte AWS)
+      AWS_SECRET_ACCESS_KEY: test
+      CONTACT_QUEUE_NAME: contact-notifications
+      CONTACT_BUCKET: devsecops-contacts
     ports:
       - "4000:4000"   # le navigateur envoie le formulaire de contact directement à l'API
     depends_on:
       db:
         condition: service_healthy   # attend que PostgreSQL accepte les connexions
+      floci:
+        condition: service_healthy   # attend que Floci soit prêt
     restart: unless-stopped
     networks:
       - portfolio-net
