@@ -1,0 +1,5 @@
+# Exceptions Trivy documentées (Activité 6, étape 129)
+# AWS-0132 : chiffrement S3 avec une clé KMS gérée par le client (CMK).
+# Le labo Floci utilise le chiffrement AES256 géré par S3 : accepté ici,
+# à revoir avant tout déploiement sur un vrai compte AWS.
+AWS-0132
