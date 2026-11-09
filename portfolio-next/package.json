@@ -10,7 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "next": "16.4.3",
+    "next": "16.4.4",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
@@ -19,7 +19,7 @@
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
     "eslint": "^10",
-    "eslint-config-next": "16.4.3",
+    "eslint-config-next": "16.4.4",
     "jest": "^30.5.2",
     "jest-environment-jsdom": "^30.5.2"
   }
