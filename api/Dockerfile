@@ -8,7 +8,7 @@
 # à l'autre, mais jamais écrits dans une couche de l'image.
 
 # ---------- Étape 1 : dépendances et code ----------
-FROM node:22-alpine AS deps
+FROM node:23-alpine AS deps
 RUN apk add --no-cache openssl
 WORKDIR /app
 ENV CHECKPOINT_DISABLE=1 PRISMA_HIDE_UPDATE_MESSAGE=1
@@ -25,7 +25,7 @@ COPY data ./data
 RUN chmod -R a+rX /app
 
 # ---------- Étape 2 : image d'exécution ----------
-FROM node:22-alpine AS runtime
+FROM node:23-alpine AS runtime
 
 # Correctifs de sécurité Alpine + OpenSSL (moteurs Prisma) ; suppression de npm, npx, yarn et corepack :
 # inutiles à l'exécution, ils apportent une bonne partie des vulnérabilités signalées par Trivy
