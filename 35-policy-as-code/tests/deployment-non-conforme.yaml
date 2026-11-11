@@ -1,0 +1,21 @@
+# Étape 176 : Deployment VOLONTAIREMENT non conforme aux 4 policies
+#   image nginx:latest, conteneur privilégié, root, sans requests ni limits
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: non-conforme
+  namespace: devsecops-portfolio
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: non-conforme }
+  template:
+    metadata:
+      labels: { app: non-conforme }
+    spec:
+      containers:
+        - name: web
+          image: nginx:latest
+          securityContext:
+            privileged: true
+            runAsUser: 0

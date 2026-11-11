@@ -10,4 +10,7 @@ paths = [
   '''(^|/)\.next/''',
   '''(^|/)reports/''',
   '''(^|/)\.vagrant/''',
+  # Activité 7, étape 183 : SealedSecrets = valeurs CHIFFRÉES (clé publique du cluster), faites pour Git.
+  # Leur texte base64 aléatoire déclenche la règle generic-api-key (faux positif).
+  '''(^|/)36-secrets/sealed/[^/]+-sealed\.yaml$''',
 ]

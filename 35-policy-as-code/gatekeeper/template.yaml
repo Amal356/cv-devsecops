@@ -1,0 +1,37 @@
+# Étape 177 : la policy « interdire le tag latest » réécrite pour OPA Gatekeeper
+# 1. ConstraintTemplate : le modèle, avec la logique écrite en Rego
+#    (syntaxe Rego classique de la bibliothèque Gatekeeper : Gatekeeper n'autorise
+#     aucun « import » autre que data.lib, donc pas de « import rego.v1 »)
+apiVersion: templates.gatekeeper.sh/v1
+kind: ConstraintTemplate
+metadata:
+  name: k8sinterdiretaglatest
+spec:
+  crd:
+    spec:
+      names:
+        kind: K8sInterdireTagLatest
+  targets:
+    - target: admission.k8s.gatekeeper.sh
+      rego: |
+        package k8sinterdiretaglatest
+
+        # Conteneurs d'un Pod ou du modèle de Pod d'un Deployment
+        conteneurs[c] {
+          c := input.review.object.spec.containers[_]
+        }
+        conteneurs[c] {
+          c := input.review.object.spec.template.spec.containers[_]
+        }
+
+        violation[{"msg": msg}] {
+          c := conteneurs[_]
+          endswith(c.image, ":latest")
+          msg := sprintf("Gatekeeper : image %v interdite (tag latest)", [c.image])
+        }
+
+        violation[{"msg": msg}] {
+          c := conteneurs[_]
+          not contains(c.image, ":")
+          msg := sprintf("Gatekeeper : image %v interdite (aucun tag = latest)", [c.image])
+        }

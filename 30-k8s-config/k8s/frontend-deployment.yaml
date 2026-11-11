@@ -1,0 +1,60 @@
+# Frontend Next.js, version complète (ConfigMap, probes, ressources, sans privilèges)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: devsecops-portfolio
+  labels: { app: frontend }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: frontend }
+  template:
+    metadata:
+      labels: { app: frontend }
+    spec:
+      serviceAccountName: devsecops-app          # étape 161 : identité dédiée (RBAC minimal)
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: frontend
+          image: devsecops-portfolio:1.4.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          envFrom:
+            - configMapRef: { name: frontend-config }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 384Mi }
+          # timeoutSeconds 8 : si l'API est lente, la page attend jusqu'à 2 x 3 s avant les données
+          # locales de secours ; avec 1 s (défaut), Kubernetes tuait le frontend (panne en cascade)
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 8
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 8
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: next-cache
+              mountPath: /app/.next/cache
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: next-cache
+          emptyDir: {}

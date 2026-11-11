@@ -1,0 +1,9 @@
+# Étape 167 : par défaut, AUCUN Pod du namespace ne reçoit de trafic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: refus-par-defaut
+  namespace: devsecops-portfolio
+spec:
+  podSelector: {}            # tous les Pods du namespace
+  policyTypes: [Ingress]

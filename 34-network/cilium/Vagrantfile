@@ -1,0 +1,33 @@
+# Étape 170 : cluster de TEST K3s avec Cilium comme CNI (eBPF) et Hubble (observabilité réseau)
+#   Réutilise le rôle k3s de la partie 27 (dossier 29-kubernetes-ansible), sans flannel ni
+#   contrôleur NetworkPolicy de K3s : c'est Cilium qui gère le réseau et les policies.
+# Lancement (PowerShell, dans ce dossier) : vagrant up      Suppression : vagrant destroy -f
+Vagrant.configure("2") do |config|
+  config.vm.box = "bento/ubuntu-24.04"
+  config.vm.boot_timeout = 600
+
+  config.vm.define "cilium-vm" do |c|
+    c.vm.hostname = "cilium-vm"
+    c.vm.network "private_network", ip: "192.168.56.41"
+    c.vm.network "forwarded_port", guest: 22, host: 2204, id: "ssh"
+    # Rôles Ansible de la partie 27 (rôle k3s) partagés avec la VM
+    c.vm.synced_folder "../../29-kubernetes-ansible/ansible", "/roles-k3s"
+
+    c.vm.provider "virtualbox" do |vb|
+      vb.name = "cilium-vm"
+      vb.memory = 3072          # Cilium + Hubble : plus de mémoire que flannel
+      vb.cpus = 2
+    end
+
+    c.vm.provision "shell", name: "ansible", inline: <<-SHELL
+      command -v ansible-playbook >/dev/null || (apt-get update -qq && apt-get install -y -qq ansible-core)
+    SHELL
+
+    c.vm.provision "ansible_local" do |ansible|
+      ansible.install = false
+      ansible.compatibility_mode = "2.0"
+      ansible.provisioning_path = "/vagrant/ansible"
+      ansible.playbook = "playbook.yml"
+    end
+  end
+end

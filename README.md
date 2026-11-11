@@ -50,6 +50,19 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 - [Étapes 124 à 133 – Terraform avancé (modules, state, IaC scan, OpenTofu, Terragrunt, Pulumi)](26-terraform-avance/README.md)
 - [Étapes 134 et 135 – Automatisation Terraform + Ansible](27-terraform-ansible/README.md)
 
+### Activité 7 – Kubernetes et sécurité Kubernetes
+
+- [Étapes 136 à 143 – Introduction à Kubernetes (K3s)](28-kubernetes/README.md)
+- [Étapes 144 à 146 – Kubernetes avec Ansible et Vagrant](29-kubernetes-ansible/README.md)
+- [Étapes 147 à 152 – ConfigMap, Secret, PVC et Ingress](30-k8s-config/README.md)
+- [Étapes 153 à 155 – HTTPS avec cert-manager](31-https/README.md)
+- [Étapes 156 à 160 – Probes, ressources et HPA](32-sante/README.md)
+- [Étapes 161 à 166 – RBAC, securityContext et Pod Security Standards](33-rbac/README.md)
+- [Étapes 167 à 170 – NetworkPolicies, Cilium et Hubble](34-network/README.md)
+- [Étapes 171 à 177 – Policy as Code : Kyverno et Gatekeeper](35-policy-as-code/README.md)
+- [Étapes 178 à 184 – Vault, External Secrets et Sealed Secrets](36-secrets/README.md)
+- [Étapes 185 à 189 – Trivy Operator, Kubescape et Falco](37-securite-continue/README.md)
+
 ## Architecture finale
 
 ```

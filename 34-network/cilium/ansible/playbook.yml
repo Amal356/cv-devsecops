@@ -1,0 +1,13 @@
+# Étape 170 : K3s sans flannel (rôle k3s de la partie 27) puis Cilium + Hubble
+- name: Cluster de test K3s + Cilium + Hubble
+  hosts: all
+  become: true
+  roles:
+    - role: /roles-k3s/roles/k3s
+      k3s_utilisateur: vagrant
+      k3s_attendre_noeud: false          # NotReady tant que Cilium n'est pas installé
+      k3s_config_supplementaire: |
+        flannel-backend: "none"
+        disable-network-policy: true
+        disable: [traefik, servicelb]
+    - role: cilium

@@ -1,0 +1,15 @@
+# Étape 166 : Pod volontairement PRIVILÉGIÉ (root + privileged: true).
+# Refusé dès le profil « baseline » (et donc aussi par « restricted »).
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-root
+  namespace: devsecops-portfolio
+spec:
+  containers:
+    - name: shell
+      image: postgres:16-alpine
+      command: ["sleep", "3600"]
+      securityContext:
+        privileged: true
+        runAsUser: 0

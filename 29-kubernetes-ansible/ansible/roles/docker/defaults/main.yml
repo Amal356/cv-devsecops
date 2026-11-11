@@ -1,0 +1,2 @@
+# Utilisateur autorisé à lancer docker sans sudo
+docker_utilisateur: vagrant

@@ -1,0 +1,22 @@
+# Étape 147 : configuration NON sensible du frontend et de l'API
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  namespace: devsecops-portfolio
+data:
+  NODE_ENV: production
+  PORT: "4000"
+  # Origines autorisées à appeler l'API depuis un navigateur (Ingress HTTP et HTTPS)
+  CORS_ORIGIN: "https://portfolio.local:8443,http://portfolio.local:8088,https://portfolio.local,http://portfolio.local"
+  CHECKPOINT_DISABLE: "1"          # Prisma : pas d'appel réseau de télémétrie
+  HOME: /tmp                       # système de fichiers en lecture seule : seul /tmp est inscriptible
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+  namespace: devsecops-portfolio
+data:
+  API_URL: http://api:4000         # étape 143 : nom DNS du Service de l'API
+  NEXT_TELEMETRY_DISABLED: "1"

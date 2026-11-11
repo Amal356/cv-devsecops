@@ -1,0 +1,27 @@
+# Étape 177 : Deployment conforme à tout SAUF le tag latest (test de Gatekeeper seul)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-latest
+  namespace: devsecops-portfolio
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: test-latest }
+  template:
+    metadata:
+      labels: { app: test-latest }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: web
+          image: nginx:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { cpu: 100m, memory: 64Mi }

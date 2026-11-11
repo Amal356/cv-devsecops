@@ -1,0 +1,36 @@
+# Partie 27 (étapes 144 à 146) : VM Kubernetes créée et configurée uniquement par l'automatisation
+#   Vagrant crée la VM Ubuntu, puis Ansible la configure : SSH > Docker > K3s
+#   Windows ne peut pas être contrôleur Ansible : Ansible tourne dans la VM (provisioner ansible_local)
+# Lancement (PowerShell, dans ce dossier) : vagrant up
+# Recréation complète (étape 146)         : vagrant destroy -f ; vagrant up
+Vagrant.configure("2") do |config|
+  # Ubuntu 24.04 LTS (box Bento, avec les Guest Additions VirtualBox)
+  config.vm.box = "bento/ubuntu-24.04"
+  config.vm.boot_timeout = 600
+
+  config.vm.define "k3s-vm" do |k3s|
+    k3s.vm.hostname = "k3s-vm"
+    k3s.vm.network "private_network", ip: "192.168.56.40"
+    # Port SSH fixe sur Windows (2222 = ubuntu-server-26, 2201/2202 = VM de la partie VII)
+    k3s.vm.network "forwarded_port", guest: 22, host: 2203, id: "ssh"
+
+    k3s.vm.provider "virtualbox" do |vb|
+      vb.name = "k3s-vm"
+      vb.memory = 2048
+      vb.cpus = 2
+    end
+
+    # 1. Installation d'Ansible dans la VM (paquet officiel Ubuntu)
+    k3s.vm.provision "shell", name: "ansible", inline: <<-SHELL
+      command -v ansible-playbook >/dev/null || (apt-get update -qq && apt-get install -y -qq ansible-core)
+    SHELL
+
+    # 2. Configuration de la VM par le playbook (rôles ssh, docker, k3s)
+    k3s.vm.provision "ansible_local" do |ansible|
+      ansible.install = false
+      ansible.compatibility_mode = "2.0"
+      ansible.provisioning_path = "/vagrant/ansible"
+      ansible.playbook = "playbook.yml"
+    end
+  end
+end

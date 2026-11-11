@@ -1,0 +1,83 @@
+# Rôle cilium : CLI cilium + hubble, installation de Cilium (CNI eBPF) et de Hubble
+- name: Lire la version stable de la CLI Cilium
+  ansible.builtin.uri:
+    url: https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt
+    return_content: true
+  register: version_cilium_cli
+
+- name: Lire la version stable de la CLI Hubble
+  ansible.builtin.uri:
+    url: https://raw.githubusercontent.com/cilium/hubble/main/stable.txt
+    return_content: true
+  register: version_hubble
+
+- name: Installer la CLI cilium
+  ansible.builtin.unarchive:
+    src: "https://github.com/cilium/cilium-cli/releases/download/{{ version_cilium_cli.content | trim }}/cilium-linux-amd64.tar.gz"
+    dest: /usr/local/bin
+    remote_src: true
+    creates: /usr/local/bin/cilium
+
+- name: Installer la CLI hubble
+  ansible.builtin.unarchive:
+    src: "https://github.com/cilium/hubble/releases/download/{{ version_hubble.content | trim }}/hubble-linux-amd64.tar.gz"
+    dest: /usr/local/bin
+    remote_src: true
+    creates: /usr/local/bin/hubble
+
+- name: Vérifier si Cilium est déjà installé
+  ansible.builtin.command: k3s kubectl -n kube-system get daemonset cilium
+  register: cilium_present
+  changed_when: false
+  failed_when: false
+
+# Plage d'adresses des Pods de K3s (10.42.0.0/16) conservée
+- name: Installer Cilium
+  ansible.builtin.command: cilium install --set ipam.operator.clusterPoolIPv4PodCIDRList=10.42.0.0/16
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when: cilium_present.rc != 0
+
+- name: Attendre que Cilium soit prêt
+  ansible.builtin.command: cilium status --wait --wait-duration 15m
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  changed_when: false
+
+- name: Vérifier si Hubble Relay est déjà activé
+  ansible.builtin.command: k3s kubectl -n kube-system get deployment hubble-relay
+  register: hubble_present
+  changed_when: false
+  failed_when: false
+
+- name: Activer Hubble (observabilité réseau)
+  ansible.builtin.command: cilium hubble enable
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  when: hubble_present.rc != 0
+
+- name: Attendre Cilium + Hubble
+  ansible.builtin.command: cilium status --wait --wait-duration 15m
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+  register: etat_cilium
+  changed_when: false
+
+- name: Attendre que le nœud soit Ready
+  ansible.builtin.command: k3s kubectl wait --for=condition=Ready node/{{ ansible_facts['hostname'] }} --timeout=60s
+  register: attente_noeud
+  until: attente_noeud.rc == 0
+  retries: 20
+  delay: 15
+  changed_when: false
+
+- name: Afficher l'état de Cilium
+  ansible.builtin.debug:
+    var: etat_cilium.stdout_lines
+
+# La CLI cilium (contrairement au kubectl intégré à K3s) a besoin de KUBECONFIG
+- name: Indiquer le kubeconfig de K3s aux CLI cilium et hubble
+  ansible.builtin.lineinfile:
+    path: /etc/environment
+    regexp: "^KUBECONFIG="
+    line: "KUBECONFIG=/etc/rancher/k3s/k3s.yaml"

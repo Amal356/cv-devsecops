@@ -1,0 +1,33 @@
+# Étape 154 : autorité de certification (CA) locale gérée par cert-manager
+#   1. ClusterIssuer autosigné  -> 2. certificat de CA « DevSecOps Lab CA »  -> 3. ClusterIssuer CA
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: devsecops-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: DevSecOps Lab CA
+  secretName: devsecops-ca
+  duration: 8760h          # 1 an
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: selfsigned
+    kind: ClusterIssuer
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: devsecops-ca
+spec:
+  ca:
+    secretName: devsecops-ca

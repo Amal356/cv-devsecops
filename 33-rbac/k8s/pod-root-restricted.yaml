@@ -1,0 +1,16 @@
+# Étape 166 : Pod root SANS mode privilégié.
+#   Profil baseline   : accepté (baseline n'interdit que les privilèges dangereux : privileged, hostPath...)
+#   Profil restricted : REFUSÉ (exige runAsNonRoot, seccomp, drop ALL, allowPrivilegeEscalation: false)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-root-simple
+  namespace: devsecops-portfolio
+spec:
+  containers:
+    - name: shell
+      image: postgres:16-alpine
+      imagePullPolicy: IfNotPresent
+      command: ["sleep", "3600"]
+      securityContext:
+        runAsUser: 0
