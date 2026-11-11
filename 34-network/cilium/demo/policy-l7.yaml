@@ -1,0 +1,22 @@
+# Étape 170 : NetworkPolicy AVANCÉE (CiliumNetworkPolicy), impossible avec une NetworkPolicy standard
+#   - filtrage par identité de Pod (labels), comme une NetworkPolicy classique (couches 3-4)
+#   - ET filtrage HTTP (couche 7) : seul « GET / » est autorisé, « /admin » est refusé (403)
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: serveur-l7
+  namespace: demo
+spec:
+  endpointSelector:
+    matchLabels: { app: serveur }
+  ingress:
+    - fromEndpoints:
+        - matchLabels: { role: client }
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+          rules:
+            http:
+              - method: GET
+                path: "/"

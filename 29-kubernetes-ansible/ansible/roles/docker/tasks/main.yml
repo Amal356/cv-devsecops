@@ -1,0 +1,55 @@
+# Rôle docker : Docker Engine depuis le dépôt officiel (repris du playbook ansible/install-docker.yml)
+- name: Installer les prérequis
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - python3-debian   # requis par le module deb822_repository
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Créer le dossier des clés APT
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Télécharger la clé GPG officielle de Docker
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+
+- name: Ajouter le dépôt officiel Docker
+  ansible.builtin.deb822_repository:
+    name: docker
+    types: deb
+    uris: https://download.docker.com/linux/ubuntu
+    suites: "{{ ansible_facts['distribution_release'] }}"
+    components: stable
+    architectures: "{{ {'x86_64': 'amd64', 'aarch64': 'arm64'}[ansible_facts['architecture']] }}"
+    signed_by: /etc/apt/keyrings/docker.asc
+
+- name: Installer Docker Engine
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: Démarrer Docker et l'activer au démarrage
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Autoriser l'utilisateur à lancer docker sans sudo
+  ansible.builtin.user:
+    name: "{{ docker_utilisateur }}"
+    groups: docker
+    append: true

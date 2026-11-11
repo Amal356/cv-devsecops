@@ -1,0 +1,63 @@
+# API Express, version complète :
+#   étape 149 : ConfigMap + Secret      étapes 157-158 : readiness et liveness sur /api/health
+#   étape 159 : requests / limits       étape 165 : sans privilèges
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: devsecops-portfolio
+  labels: { app: api }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: api }
+  template:
+    metadata:
+      labels: { app: api }
+    spec:
+      serviceAccountName: devsecops-app          # étape 161 : identité dédiée (RBAC minimal)
+      automountServiceAccountToken: false     # l'API n'appelle pas l'API Kubernetes
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000                        # utilisateur « node » de l'image
+        runAsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: api
+          image: devsecops-api:1.4.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4000
+          envFrom:
+            - configMapRef: { name: api-config }          # configuration non sensible
+          env:
+            - name: DATABASE_URL                          # valeurs sensibles : Secrets
+              valueFrom:
+                secretKeyRef: { name: postgres-credentials, key: DATABASE_URL }
+            - name: API_DEMO_TOKEN
+              valueFrom:
+                secretKeyRef: { name: api-secrets, key: API_DEMO_TOKEN }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          readinessProbe:                     # le Pod ne reçoit du trafic que s'il répond
+            httpGet: { path: /api/health, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:                      # Kubernetes redémarre le conteneur s'il ne répond plus
+            httpGet: { path: /api/health, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

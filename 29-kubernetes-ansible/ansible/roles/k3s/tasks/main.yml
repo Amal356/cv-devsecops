@@ -1,0 +1,69 @@
+# Rôle k3s (étape 144) : installe un cluster K3s mono-nœud et prépare kubectl
+# Configuration lue par K3s au démarrage : le kubeconfig /etc/rancher/k3s/k3s.yaml devient
+# lisible par le groupe de l'utilisateur (0640) au lieu de root seul (0600).
+# kubectl fonctionne alors sans sudo, y compris dans « vagrant ssh -c », sans variable KUBECONFIG.
+- name: Créer le dossier de configuration de K3s
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
+    state: directory
+    mode: "0755"
+
+- name: Écrire la configuration de K3s
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/config.yaml
+    content: |
+      # Géré par Ansible (rôle k3s)
+      write-kubeconfig-mode: "0640"
+      write-kubeconfig-group: "{{ k3s_utilisateur }}"
+      {{ k3s_config_supplementaire }}
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Redémarrer K3s
+
+- name: Télécharger le script d'installation officiel de K3s
+  ansible.builtin.get_url:
+    url: https://get.k3s.io
+    dest: /usr/local/bin/k3s-install.sh
+    mode: "0755"
+
+# « creates » : le script n'est relancé que si K3s est absent (idempotence)
+- name: Installer K3s {{ k3s_version }}
+  ansible.builtin.command: /usr/local/bin/k3s-install.sh
+  environment:
+    INSTALL_K3S_VERSION: "{{ k3s_version }}"
+  args:
+    creates: /usr/local/bin/k3s
+
+- name: Démarrer K3s et l'activer au démarrage
+  ansible.builtin.service:
+    name: k3s
+    state: started
+    enabled: true
+
+# Applique tout de suite un éventuel changement de configuration (redémarrage de K3s)
+- name: Appliquer les redémarrages en attente
+  ansible.builtin.meta: flush_handlers
+
+- name: Attendre que le nœud soit Ready
+  ansible.builtin.command: k3s kubectl wait --for=condition=Ready node/{{ ansible_facts['hostname'] }} --timeout=60s
+  register: attente_noeud
+  until: attente_noeud.rc == 0
+  retries: 20
+  delay: 15
+  changed_when: false
+  when: k3s_attendre_noeud | bool
+
+# Vérification avec les droits de l'utilisateur (et non de root)
+- name: Lire l'état du cluster en tant que {{ k3s_utilisateur }}
+  ansible.builtin.command: kubectl get nodes -o wide
+  become: true
+  become_user: "{{ k3s_utilisateur }}"
+  register: noeuds
+  changed_when: false
+  when: k3s_attendre_noeud | bool
+
+- name: Afficher le résultat de kubectl get nodes
+  ansible.builtin.debug:
+    var: noeuds.stdout_lines
+  when: k3s_attendre_noeud | bool

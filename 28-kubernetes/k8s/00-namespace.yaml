@@ -1,0 +1,7 @@
+# Étape 138 : namespace dédié au DevSecOps Portfolio
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: devsecops-portfolio
+  labels:
+    app.kubernetes.io/part-of: devsecops-portfolio

@@ -1,0 +1,27 @@
+# Étape 140 : Deployment de l'API Express
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: devsecops-portfolio
+  labels: { app: api }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: api }
+  template:
+    metadata:
+      labels: { app: api }
+    spec:
+      containers:
+        - name: api
+          image: devsecops-api:1.4.0        # image importée dans K3s, version figée
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4000
+          env:
+            - name: PORT
+              value: "4000"
+            - name: DATABASE_URL            # postgresql://...@postgres:5432/... (Service « postgres »)
+              valueFrom:
+                secretKeyRef: { name: postgres-credentials, key: DATABASE_URL }

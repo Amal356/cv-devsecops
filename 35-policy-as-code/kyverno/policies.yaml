@@ -1,0 +1,114 @@
+# Étapes 172 à 175 : règles Kyverno appliquées aux Pods du DevSecOps Portfolio
+#   (namespaces portant le label app.kubernetes.io/part-of=devsecops-portfolio)
+# Kyverno génère automatiquement les mêmes règles pour les Deployments, StatefulSets, Jobs... :
+# un Deployment non conforme est refusé dès sa création, avant même de créer un Pod.
+# failureAction: Enforce = la ressource est REFUSÉE (Audit = simple rapport)
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: interdire-tag-latest
+  annotations:
+    policies.kyverno.io/title: Interdire le tag latest (étape 172)
+spec:
+  background: true
+  rules:
+    - name: image-versionnee
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaceSelector:
+                matchLabels: { app.kubernetes.io/part-of: devsecops-portfolio }
+      validate:
+        failureAction: Enforce
+        message: "Image interdite : le tag « latest » (ou l'absence de tag) n'est pas autorisé, utilisez une version fixe."
+        pattern:
+          spec:
+            containers:
+              - image: "*:* & !*:latest"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: interdire-privilegie
+  annotations:
+    policies.kyverno.io/title: Interdire les conteneurs privilégiés (étape 173)
+spec:
+  background: true
+  rules:
+    - name: pas-de-privileged
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaceSelector:
+                matchLabels: { app.kubernetes.io/part-of: devsecops-portfolio }
+      validate:
+        failureAction: Enforce
+        message: "Conteneur privilégié interdit (securityContext.privileged doit être absent ou false)."
+        pattern:
+          spec:
+            containers:
+              - =(securityContext):
+                  =(privileged): "false"
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: imposer-runasnonroot
+  annotations:
+    policies.kyverno.io/title: Imposer runAsNonRoot (étape 174)
+spec:
+  background: true
+  rules:
+    - name: utilisateur-non-root
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaceSelector:
+                matchLabels: { app.kubernetes.io/part-of: devsecops-portfolio }
+      validate:
+        failureAction: Enforce
+        message: "runAsNonRoot: true est obligatoire (au niveau du Pod ou de chaque conteneur)."
+        anyPattern:
+          - spec:
+              securityContext:
+                runAsNonRoot: true
+              containers:
+                - =(securityContext):
+                    =(runAsNonRoot): true
+          - spec:
+              containers:
+                - securityContext:
+                    runAsNonRoot: true
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: imposer-requests-limits
+  annotations:
+    policies.kyverno.io/title: Imposer requests et limits (étape 175)
+spec:
+  background: true
+  rules:
+    - name: ressources-definies
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaceSelector:
+                matchLabels: { app.kubernetes.io/part-of: devsecops-portfolio }
+      validate:
+        failureAction: Enforce
+        message: "requests et limits (cpu et memory) sont obligatoires pour chaque conteneur."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  requests:
+                    cpu: "?*"
+                    memory: "?*"
+                  limits:
+                    cpu: "?*"
+                    memory: "?*"

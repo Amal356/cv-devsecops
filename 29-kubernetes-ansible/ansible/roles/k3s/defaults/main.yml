@@ -1,0 +1,8 @@
+# Version fixée : la même que sur ubuntu-server-26 (installation reproductible)
+k3s_version: v1.37.2+k3s1
+# Utilisateur autorisé à lire le kubeconfig (kubectl sans sudo)
+k3s_utilisateur: vagrant
+# Options K3s supplémentaires (YAML ajouté à /etc/rancher/k3s/config.yaml), ex. pour un autre CNI
+k3s_config_supplementaire: ""
+# false si le CNI est installé après K3s (ex. Cilium) : le nœud n'est pas Ready avant
+k3s_attendre_noeud: true

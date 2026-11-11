@@ -1,0 +1,18 @@
+# Étape 154 : certificat TLS du portfolio, signé par la CA locale et renouvelé automatiquement
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: portfolio-tls
+  namespace: devsecops-portfolio
+spec:
+  secretName: portfolio-tls
+  dnsNames:
+    - portfolio.local
+  duration: 2160h          # 90 jours
+  renewBefore: 360h        # renouvelé 15 jours avant expiration
+  privateKey:
+    algorithm: ECDSA
+    size: 256
+  issuerRef:
+    name: devsecops-ca
+    kind: ClusterIssuer

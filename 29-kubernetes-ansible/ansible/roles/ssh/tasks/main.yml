@@ -1,0 +1,33 @@
+# Rôle ssh : serveur OpenSSH installé, actif et durci
+- name: Installer le serveur OpenSSH
+  ansible.builtin.apt:
+    name: openssh-server
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+# « 00- » : sshd retient la première valeur lue, ce fichier passe avant ceux de la box
+- name: Durcir la configuration SSH
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/00-durcissement.conf
+    content: |
+      # Géré par Ansible (rôle ssh)
+      PermitRootLogin no
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      X11Forwarding no
+      MaxAuthTries 3
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Redémarrer SSH
+
+- name: Vérifier la syntaxe de la configuration SSH
+  ansible.builtin.command: sshd -t
+  changed_when: false
+
+- name: Démarrer SSH et l'activer au démarrage
+  ansible.builtin.service:
+    name: ssh
+    state: started
+    enabled: true

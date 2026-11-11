@@ -1,0 +1,43 @@
+# Étape 182 : Floci (émulateur AWS de l'activité 6) déployé dans le cluster de labo,
+# pour que External Secrets Operator puisse joindre son API Secrets Manager.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: floci
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: floci
+  namespace: floci
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: floci }
+  template:
+    metadata:
+      labels: { app: floci }
+    spec:
+      automountServiceAccountToken: false
+      # Sans cela, Kubernetes injecte FLOCI_PORT=tcp://<ip>:4566 (variables du Service « floci »)
+      # et Floci (Quarkus) la lit comme sa configuration floci.port : plantage au démarrage.
+      enableServiceLinks: false
+      containers:
+        - name: floci
+          image: floci/floci:2.4.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 4566
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: floci
+  namespace: floci
+spec:
+  selector: { app: floci }
+  ports:
+    - port: 4566

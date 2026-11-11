@@ -1,0 +1,25 @@
+# Étape 169 : Pod NON autorisé (ni frontend, ni API) qui tente de joindre l'API.
+# Conforme au profil « restricted » pour être accepté : seule la NetworkPolicy doit le bloquer.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: intrus
+  namespace: devsecops-portfolio
+  labels: { app: intrus }
+spec:
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile: { type: RuntimeDefault }
+  containers:
+    - name: intrus
+      image: devsecops-api:1.4.0            # image déjà présente : Node.js sert de client HTTP
+      imagePullPolicy: IfNotPresent
+      command: ["sleep", "3600"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities: { drop: ["ALL"] }
+      resources:
+        requests: { cpu: 10m, memory: 32Mi }
+        limits: { cpu: 100m, memory: 64Mi }

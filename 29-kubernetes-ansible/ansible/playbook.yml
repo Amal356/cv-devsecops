@@ -1,0 +1,15 @@
+# Étape 145 : configuration complète de la VM Kubernetes (Ubuntu > SSH > Docker > K3s)
+# Lancé automatiquement par Vagrant (vagrant up / vagrant provision)
+- name: VM Kubernetes automatisée
+  hosts: all
+  become: true
+
+  vars:
+    utilisateur: vagrant
+
+  roles:
+    - role: ssh
+    - role: docker
+      docker_utilisateur: "{{ utilisateur }}"
+    - role: k3s
+      k3s_utilisateur: "{{ utilisateur }}"

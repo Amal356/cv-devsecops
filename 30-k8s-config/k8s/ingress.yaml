@@ -1,0 +1,24 @@
+# Étapes 151-152 : accès par nom local, frontend sur « / » et API sur « /api »
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: portfolio
+  namespace: devsecops-portfolio
+spec:
+  ingressClassName: traefik              # Ingress controller fourni par K3s
+  rules:
+    - host: portfolio.local
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port: { number: 4000 }
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port: { number: 3000 }
