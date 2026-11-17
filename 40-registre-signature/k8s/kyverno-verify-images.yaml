@@ -1,0 +1,44 @@
+# Étape 203 : Kyverno vérifie la signature Cosign des images Harbor AVANT leur déploiement.
+# - clé publique du projet (40-registre-signature/cosign.pub, nouvelle paire de clés) : seule la clé privée correspondante
+#   (hors du dépôt, ~/cosign-keys) peut produire une signature acceptée ;
+# - mutateDigest : le tag est remplacé par le digest vérifié (l'image ne peut plus changer
+#   entre la vérification et le démarrage du conteneur) ;
+# - pas de journal de transparence public (Rekor) en labo : la clé suffit.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verifier-signature-images
+  annotations:
+    policies.kyverno.io/title: Signature Cosign obligatoire (Harbor)
+spec:
+  background: false
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: signature-cosign-harbor
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+      verifyImages:
+        - imageReferences:
+            - "localhost:8090/devsecops/*"
+          failureAction: Enforce
+          mutateDigest: true
+          verifyDigest: true
+          required: true
+          imageRegistryCredentials:
+            allowInsecureRegistry: true        # Harbor de labo en HTTP
+            secrets: [harbor-pull]             # robot en lecture seule (namespace kyverno)
+          attestors:
+            - count: 1
+              entries:
+                - keys:
+                    publicKeys: |-
+                      -----BEGIN PUBLIC KEY-----
+                      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEkvTYQbH52c1oIiKeo1qrdOaYUpAZ
+                      4ipRDvWqlmmpRsZdrotLDiJaICxA6YmbUt7zW8Imfe5YHpq1G8ZDF50gYA==
+                      -----END PUBLIC KEY-----
+                    rekor:
+                      ignoreTlog: true
+                    ctlog:
+                      ignoreSCT: true

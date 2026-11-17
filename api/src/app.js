@@ -7,6 +7,8 @@ import profileRouter from "./routes/profile.js";
 import projectsRouter from "./routes/projects.js";
 import skillsRouter from "./routes/skills.js";
 import contactRouter from "./routes/contact.js";
+import statsRouter from "./routes/stats.js";
+import { observabilite, routeMetriques } from "./middlewares/observabilite.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
@@ -30,16 +32,11 @@ app.disable("x-powered-by");
 // JSON indenté : plus lisible dans le navigateur et avec curl
 app.set("json spaces", 2);
 
-// Journal minimal : méthode, URL, code de réponse et durée (désactivé pendant les tests)
-if (process.env.NODE_ENV !== "test") {
-  app.use((req, res, next) => {
-    const debut = Date.now();
-    res.on("finish", () => {
-      console.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - debut} ms`);
-    });
-    next();
-  });
-}
+// Métriques Prometheus, correlation ID et journal JSON (activité 8, étapes 222 et 228)
+app.use(observabilite);
+
+// GET /metrics : lu par Prometheus via le Service (non exposé par l'Ingress, qui ne publie que /api)
+app.get("/metrics", routeMetriques);
 
 // Routes de l'API
 app.use("/api/health", healthRouter);
@@ -47,6 +44,7 @@ app.use("/api/profile", profileRouter);
 app.use("/api/projects", projectsRouter);
 app.use("/api/skills", skillsRouter);
 app.use("/api/contact", contactRouter);
+app.use("/api/stats", statsRouter);
 
 // Route inconnue : réponse JSON 404
 app.use((req, res) => {

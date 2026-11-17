@@ -1,0 +1,45 @@
+# Étape 192 : valeurs modifiables du chart (helm install / upgrade -f values.yaml)
+
+# Nombre de Pods de chaque composant (ignoré pour l'API si autoscaling.enabled = true)
+replicas:
+  frontend: 1
+  api: 1
+
+frontend:
+  image: devsecops-portfolio
+  tag: "1.6.0"
+  pullPolicy: IfNotPresent
+  apiUrl: http://api:4000            # adresse interne de l'API (nom du Service)
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { cpu: 500m, memory: 384Mi }
+
+api:
+  image: devsecops-api
+  tag: "1.6.0"
+  pullPolicy: IfNotPresent
+  corsOrigin: "https://portfolio.local:8443,http://portfolio.local:8088,https://portfolio.local,http://portfolio.local"
+  # Secrets existants (créés hors du chart : aucune valeur secrète dans Git)
+  secrets:
+    databaseUrl: { name: postgres-credentials, key: DATABASE_URL }
+    demoToken: { name: api-secrets, key: API_DEMO_TOKEN }
+  resources:
+    requests: { cpu: 50m, memory: 96Mi }
+    limits: { cpu: 500m, memory: 256Mi }
+
+ingress:
+  enabled: true
+  className: traefik
+  host: portfolio.local
+  tlsSecret: portfolio-tls            # certificat cert-manager (activité 7, étape 154)
+  redirectHttpToHttps: true
+
+# Mise à l'échelle automatique de l'API (étape 160) – désactivée : replicas fixé par values.yaml
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 4
+  cpuUtilization: 70
+
+serviceAccountName: devsecops-app     # activité 7, étape 161 (créé hors du chart)
+imagePullSecrets: []                  # ex. [{ name: harbor-pull }] (étape 202)

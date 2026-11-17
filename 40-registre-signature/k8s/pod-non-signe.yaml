@@ -1,0 +1,22 @@
+# Étape 204 : image poussée dans Harbor SANS signature → doit être refusée par Kyverno
+apiVersion: v1
+kind: Pod
+metadata:
+  name: api-non-signee
+  namespace: devsecops-portfolio
+spec:
+  imagePullSecrets: [{ name: harbor-pull }]
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile: { type: RuntimeDefault }
+  containers:
+    - name: api
+      image: localhost:8090/devsecops/devsecops-api:non-signee
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities: { drop: ["ALL"] }
+      resources:
+        requests: { cpu: 10m, memory: 32Mi }
+        limits: { cpu: 100m, memory: 64Mi }

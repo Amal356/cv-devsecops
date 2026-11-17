@@ -1,0 +1,42 @@
+# Tableau de bord Grafana chargé automatiquement (label grafana_dashboard=1)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-api
+  namespace: monitoring
+  labels:
+    grafana_dashboard: '1'
+data:
+  dashboard-api.json: "{\n \"uid\": \"portfolio-api\",\n \"title\": \"Portfolio – API (requêtes, erreurs, latence)\",\n \"schemaVersion\": 39,\n \"time\": {\n  \"from\": \"now-30m\",\n  \"to\": \"now\"\n\
+    \ },\n \"refresh\": \"15s\",\n \"tags\": [\n  \"devsecops\",\n  \"activite-8\"\n ],\n \"templating\": {\n  \"list\": [\n   {\n    \"name\": \"namespace\",\n    \"type\": \"query\",\n    \"datasource\"\
+    : {\n     \"type\": \"prometheus\",\n     \"uid\": \"prometheus\"\n    },\n    \"query\": {\n     \"query\": \"label_values(kube_pod_info{namespace=~\\\"portfolio-.*\\\"}, namespace)\",\n     \"refId\"\
+    : \"ns\"\n    },\n    \"definition\": \"label_values(kube_pod_info{namespace=~\\\"portfolio-.*\\\"}, namespace)\",\n    \"includeAll\": true,\n    \"multi\": true,\n    \"current\": {\n     \"text\"\
+    : \"All\",\n     \"value\": \"$__all\"\n    },\n    \"refresh\": 2\n   }\n  ]\n },\n \"links\": [\n  {\n   \"title\": \"Voir les logs de l'API (Loki)\",\n   \"url\": \"/explore?schemaVersion=1&panes=%7B%22a%22:%7B%22datasource%22:%22loki%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bapp%3D%5C%22api%5C%22%7D%20%7C%20json%22%7D%5D,%22range%22:%7B%22from%22:%22now-1h%22,%22to%22:%22now%22%7D%7D%7D&orgId=1\"\
+    ,\n   \"type\": \"link\",\n   \"targetBlank\": true\n  }\n ],\n \"panels\": [\n  {\n   \"id\": 1,\n   \"type\": \"stat\",\n   \"title\": \"Requêtes / s\",\n   \"datasource\": {\n    \"type\": \"prometheus\"\
+    ,\n    \"uid\": \"prometheus\"\n   },\n   \"gridPos\": {\n    \"x\": 0,\n    \"y\": 0,\n    \"w\": 8,\n    \"h\": 5\n   },\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"reqps\"\n   \
+    \ },\n    \"overrides\": []\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum(rate(http_requests_total{namespace=~\\\"$namespace\\\"}[1m]))\"\n    }\n   ]\n  },\n  {\n \
+    \  \"id\": 2,\n   \"type\": \"stat\",\n   \"title\": \"Taux d'erreurs (5xx)\",\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"gridPos\": {\n    \"x\"\
+    : 8,\n    \"y\": 0,\n    \"w\": 8,\n    \"h\": 5\n   },\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"percent\"\n    },\n    \"overrides\": []\n   },\n   \"targets\": [\n    {\n    \
+    \ \"refId\": \"A\",\n     \"expr\": \"100 * sum(rate(http_request_errors_total{namespace=~\\\"$namespace\\\"}[5m])) / clamp_min(sum(rate(http_requests_total{namespace=~\\\"$namespace\\\"}[5m])), 1e-9)\"\
+    \n    }\n   ]\n  },\n  {\n   \"id\": 3,\n   \"type\": \"stat\",\n   \"title\": \"Latence p95\",\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"gridPos\"\
+    : {\n    \"x\": 16,\n    \"y\": 0,\n    \"w\": 8,\n    \"h\": 5\n   },\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"s\"\n    },\n    \"overrides\": []\n   },\n   \"targets\": [\n  \
+    \  {\n     \"refId\": \"A\",\n     \"expr\": \"histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=~\\\"$namespace\\\"}[5m])))\"\n    }\n   ]\n  },\n  {\n   \"\
+    id\": 4,\n   \"type\": \"timeseries\",\n   \"title\": \"Requêtes HTTP par route\",\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"gridPos\": {\n    \"\
+    x\": 0,\n    \"y\": 5,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"reqps\",\n     \"links\": [\n      {\n       \"title\": \"Voir les logs de l'API\
+    \ (Loki)\",\n       \"url\": \"/explore?schemaVersion=1&panes=%7B%22a%22:%7B%22datasource%22:%22loki%22,%22queries%22:%5B%7B%22refId%22:%22A%22,%22expr%22:%22%7Bapp%3D%5C%22api%5C%22%7D%20%7C%20json%22%7D%5D,%22range%22:%7B%22from%22:%22now-1h%22,%22to%22:%22now%22%7D%7D%7D&orgId=1\"\
+    \n      }\n     ]\n    },\n    \"overrides\": []\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum by (namespace, route, status_code) (rate(http_requests_total{namespace=~\\\
+    \"$namespace\\\"}[1m]))\",\n     \"legendFormat\": \"{{namespace}} {{route}} {{status_code}}\"\n    }\n   ]\n  },\n  {\n   \"id\": 5,\n   \"type\": \"timeseries\",\n   \"title\": \"Erreurs 5xx par route\"\
+    ,\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"gridPos\": {\n    \"x\": 12,\n    \"y\": 5,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"fieldConfig\"\
+    : {\n    \"defaults\": {\n     \"unit\": \"reqps\"\n    },\n    \"overrides\": []\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum by (namespace, route) (rate(http_request_errors_total{namespace=~\\\
+    \"$namespace\\\"}[1m]))\",\n     \"legendFormat\": \"{{namespace}} {{route}}\"\n    }\n   ]\n  },\n  {\n   \"id\": 6,\n   \"type\": \"timeseries\",\n   \"title\": \"Latence (p50 / p95 / p99)\",\n  \
+    \ \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"gridPos\": {\n    \"x\": 0,\n    \"y\": 13,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"fieldConfig\": {\n\
+    \    \"defaults\": {\n     \"unit\": \"s\"\n    },\n    \"overrides\": []\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"histogram_quantile(0.5, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=~\\\
+    \"$namespace\\\"}[5m])))\",\n     \"legendFormat\": \"p50\"\n    },\n    {\n     \"refId\": \"B\",\n     \"expr\": \"histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=~\\\
+    \"$namespace\\\"}[5m])))\",\n     \"legendFormat\": \"p95\"\n    },\n    {\n     \"refId\": \"C\",\n     \"expr\": \"histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=~\\\
+    \"$namespace\\\"}[5m])))\",\n     \"legendFormat\": \"p99\"\n    }\n   ]\n  },\n  {\n   \"id\": 7,\n   \"type\": \"timeseries\",\n   \"title\": \"Pods API disponibles\",\n   \"datasource\": {\n    \"\
+    type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"gridPos\": {\n    \"x\": 12,\n    \"y\": 13,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"fieldConfig\": {\n    \"defaults\": {\n    \
+    \ \"unit\": \"none\"\n    },\n    \"overrides\": []\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum by (namespace) (kube_deployment_status_replicas_available{namespace=~\\\
+    \"$namespace\\\",deployment=\\\"api\\\"})\",\n     \"legendFormat\": \"{{namespace}}\"\n    }\n   ]\n  },\n  {\n   \"id\": 8,\n   \"type\": \"logs\",\n   \"title\": \"Logs de l'API (Loki) – cliquer\
+    \ sur trace_id pour ouvrir la trace\",\n   \"datasource\": {\n    \"type\": \"loki\",\n    \"uid\": \"loki\"\n   },\n   \"gridPos\": {\n    \"x\": 0,\n    \"y\": 21,\n    \"w\": 24,\n    \"h\": 10\n\
+    \   },\n   \"options\": {\n    \"showTime\": true,\n    \"wrapLogMessage\": true,\n    \"prettifyLogMessage\": false,\n    \"enableLogDetails\": true\n   },\n   \"targets\": [\n    {\n     \"refId\"\
+    : \"A\",\n     \"expr\": \"{namespace=~\\\"$namespace\\\", app=\\\"api\\\"} |= \\\"trace_id\\\"\"\n    }\n   ]\n  }\n ]\n}"

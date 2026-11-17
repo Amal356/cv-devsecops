@@ -1,0 +1,49 @@
+# Étape 232 : Grafana Alloy lit les logs des Pods du frontend et de l'API (API Kubernetes)
+# et les envoie à Loki avec les labels namespace, app, pod.
+controller:
+  type: deployment            # lecture des logs par l'API Kubernetes : pas besoin d'un DaemonSet ni de hostPath
+  replicas: 1
+alloy:
+  resources:
+    requests: { cpu: 25m, memory: 64Mi }
+    limits: { memory: 256Mi }
+  configMap:
+    content: |
+      discovery.kubernetes "pods" {
+        role = "pod"
+        namespaces {
+          names = ["portfolio-dev", "portfolio-staging", "portfolio-prod"]
+        }
+      }
+
+      discovery.relabel "portfolio" {
+        targets = discovery.kubernetes.pods.targets
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app"]
+          regex         = "api|frontend"
+          action        = "keep"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app"]
+          target_label  = "app"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+      }
+
+      loki.source.kubernetes "portfolio" {
+        targets    = discovery.relabel.portfolio.output
+        forward_to = [loki.write.loki.receiver]
+      }
+
+      loki.write "loki" {
+        endpoint {
+          url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+        }
+      }

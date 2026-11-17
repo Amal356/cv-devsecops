@@ -1,0 +1,46 @@
+# Étape 218 : migrations Prisma exécutées AVANT chaque synchronisation Argo CD (hook PreSync).
+# Si la migration échoue, Argo CD n'applique pas la nouvelle version de l'API.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migration-db
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation   # l'ancien Job est supprimé avant le suivant
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 300
+  template:
+    metadata:
+      labels: { app: migration-db }
+    spec:
+      restartPolicy: Never
+      serviceAccountName: devsecops-app
+      automountServiceAccountToken: false
+      imagePullSecrets: [{ name: harbor-pull }]
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: migration
+          image: devsecops-api               # même image (et même digest) que l'API de l'environnement
+          command: ["node", "node_modules/prisma/build/index.js", "migrate", "deploy"]
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: postgres-credentials, key: DATABASE_URL }
+            - { name: HOME, value: /tmp }
+            - { name: CHECKPOINT_DISABLE, value: "1" }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: {} }

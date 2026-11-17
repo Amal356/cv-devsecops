@@ -1,0 +1,34 @@
+# Étape 215 : une Application Argo CD par dossier envs/* du dépôt GitOps
+#   envs/dev -> portfolio-dev, envs/staging -> portfolio-staging, envs/prod -> portfolio-prod
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: portfolio
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - git:
+        repoURL: https://github.com/Amal356/devsecops-portfolio-gitops.git
+        revision: main
+        directories:
+          - path: envs/*
+  template:
+    metadata:
+      name: 'portfolio-{{ .path.basename }}'
+      labels:
+        environment: '{{ .path.basename }}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/Amal356/devsecops-portfolio-gitops.git
+        targetRevision: main
+        path: '{{ .path.path }}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: 'portfolio-{{ .path.basename }}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true

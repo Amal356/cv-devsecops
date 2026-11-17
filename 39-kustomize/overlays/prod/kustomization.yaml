@@ -1,0 +1,31 @@
+# Étapes 197-198 : environnement PROD – plusieurs replicas (3)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: portfolio-prod
+resources:
+  - namespace.yaml
+  - ../../base
+labels:
+  - pairs: { environment: prod }
+    includeSelectors: false
+replicas:
+  - name: frontend
+    count: 3
+  - name: api
+    count: 3
+configMapGenerator:
+  - name: frontend-config
+    behavior: merge
+    literals:
+      # étape 198 : API_URL propre à l'environnement (nom DNS complet du Service de l'API)
+      - API_URL=http://api.portfolio-prod.svc.cluster.local:4000
+  - name: api-config
+    behavior: merge
+    literals:
+      - CORS_ORIGIN=http://prod.portfolio.local:8088,http://prod.portfolio.local
+patches:
+  - target: { kind: Ingress, name: portfolio }
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: prod.portfolio.local

@@ -1,0 +1,38 @@
+# Tableau de bord Grafana chargé automatiquement (label grafana_dashboard=1)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-kubernetes
+  namespace: monitoring
+  labels:
+    grafana_dashboard: '1'
+data:
+  dashboard-kubernetes.json: "{\n \"uid\": \"portfolio-k8s\",\n \"title\": \"Portfolio – Kubernetes (CPU, mémoire, Pods, redémarrages)\",\n \"schemaVersion\": 39,\n \"time\": {\n  \"from\": \"now-1h\",\n\
+    \  \"to\": \"now\"\n },\n \"refresh\": \"30s\",\n \"tags\": [\n  \"devsecops\",\n  \"activite-8\"\n ],\n \"templating\": {\n  \"list\": [\n   {\n    \"name\": \"namespace\",\n    \"type\": \"query\"\
+    ,\n    \"datasource\": {\n     \"type\": \"prometheus\",\n     \"uid\": \"prometheus\"\n    },\n    \"query\": {\n     \"query\": \"label_values(kube_pod_info{namespace=~\\\"portfolio-.*\\\"}, namespace)\"\
+    ,\n     \"refId\": \"ns\"\n    },\n    \"definition\": \"label_values(kube_pod_info{namespace=~\\\"portfolio-.*\\\"}, namespace)\",\n    \"includeAll\": true,\n    \"multi\": true,\n    \"current\"\
+    : {\n     \"text\": \"All\",\n     \"value\": \"$__all\"\n    },\n    \"refresh\": 2\n   }\n  ]\n },\n \"panels\": [\n  {\n   \"id\": 1,\n   \"type\": \"stat\",\n   \"title\": \"Pods en cours d'exécution\"\
+    ,\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"gridPos\": {\n    \"x\": 0,\n    \"y\": 0,\n    \"w\": 6,\n    \"h\": 5\n   },\n   \"fieldConfig\": {\n\
+    \    \"defaults\": {\n     \"unit\": \"none\"\n    },\n    \"overrides\": []\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum(kube_pod_status_phase{namespace=~\\\"$namespace\\\
+    \",phase=\\\"Running\\\"})\"\n    }\n   ]\n  },\n  {\n   \"id\": 2,\n   \"type\": \"stat\",\n   \"title\": \"Redémarrages (1 h)\",\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\":\
+    \ \"prometheus\"\n   },\n   \"gridPos\": {\n    \"x\": 6,\n    \"y\": 0,\n    \"w\": 6,\n    \"h\": 5\n   },\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"none\"\n    },\n    \"overrides\"\
+    : []\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum(increase(kube_pod_container_status_restarts_total{namespace=~\\\"$namespace\\\"}[1h]))\"\n    }\n   ]\n  },\n  {\n\
+    \   \"id\": 3,\n   \"type\": \"stat\",\n   \"title\": \"CPU total\",\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"gridPos\": {\n    \"x\": 12,\n   \
+    \ \"y\": 0,\n    \"w\": 6,\n    \"h\": 5\n   },\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"cores\"\n    },\n    \"overrides\": []\n   },\n   \"targets\": [\n    {\n     \"refId\"\
+    : \"A\",\n     \"expr\": \"sum(rate(container_cpu_usage_seconds_total{namespace=~\\\"$namespace\\\",container!=\\\"\\\",container!=\\\"POD\\\"}[2m]))\"\n    }\n   ]\n  },\n  {\n   \"id\": 4,\n   \"\
+    type\": \"stat\",\n   \"title\": \"Mémoire totale\",\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"gridPos\": {\n    \"x\": 18,\n    \"y\": 0,\n    \"\
+    w\": 6,\n    \"h\": 5\n   },\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"bytes\"\n    },\n    \"overrides\": []\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\"\
+    : \"sum(container_memory_working_set_bytes{namespace=~\\\"$namespace\\\",container!=\\\"\\\",container!=\\\"POD\\\"})\"\n    }\n   ]\n  },\n  {\n   \"id\": 5,\n   \"type\": \"timeseries\",\n   \"title\"\
+    : \"CPU par Pod\",\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"gridPos\": {\n    \"x\": 0,\n    \"y\": 5,\n    \"w\": 12,\n    \"h\": 8\n   },\n  \
+    \ \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"cores\"\n    },\n    \"overrides\": []\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum by (namespace, pod)\
+    \ (rate(container_cpu_usage_seconds_total{namespace=~\\\"$namespace\\\",container!=\\\"\\\",container!=\\\"POD\\\"}[2m]))\",\n     \"legendFormat\": \"{{namespace}}/{{pod}}\"\n    }\n   ]\n  },\n  {\n\
+    \   \"id\": 6,\n   \"type\": \"timeseries\",\n   \"title\": \"Mémoire par Pod\",\n   \"datasource\": {\n    \"type\": \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"gridPos\": {\n    \"x\"\
+    : 12,\n    \"y\": 5,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"bytes\"\n    },\n    \"overrides\": []\n   },\n   \"targets\": [\n    {\n    \
+    \ \"refId\": \"A\",\n     \"expr\": \"sum by (namespace, pod) (container_memory_working_set_bytes{namespace=~\\\"$namespace\\\",container!=\\\"\\\",container!=\\\"POD\\\"})\",\n     \"legendFormat\"\
+    : \"{{namespace}}/{{pod}}\"\n    }\n   ]\n  },\n  {\n   \"id\": 7,\n   \"type\": \"timeseries\",\n   \"title\": \"Nombre de Pods par environnement\",\n   \"datasource\": {\n    \"type\": \"prometheus\"\
+    ,\n    \"uid\": \"prometheus\"\n   },\n   \"gridPos\": {\n    \"x\": 0,\n    \"y\": 13,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\": \"none\"\n  \
+    \  },\n    \"overrides\": []\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum by (namespace) (kube_pod_status_phase{namespace=~\\\"$namespace\\\",phase=\\\"Running\\\"\
+    })\",\n     \"legendFormat\": \"{{namespace}}\"\n    }\n   ]\n  },\n  {\n   \"id\": 8,\n   \"type\": \"timeseries\",\n   \"title\": \"Redémarrages de conteneurs\",\n   \"datasource\": {\n    \"type\"\
+    : \"prometheus\",\n    \"uid\": \"prometheus\"\n   },\n   \"gridPos\": {\n    \"x\": 12,\n    \"y\": 13,\n    \"w\": 12,\n    \"h\": 8\n   },\n   \"fieldConfig\": {\n    \"defaults\": {\n     \"unit\"\
+    : \"none\"\n    },\n    \"overrides\": []\n   },\n   \"targets\": [\n    {\n     \"refId\": \"A\",\n     \"expr\": \"sum by (namespace, pod) (kube_pod_container_status_restarts_total{namespace=~\\\"\
+    $namespace\\\"})\",\n     \"legendFormat\": \"{{namespace}}/{{pod}}\"\n    }\n   ]\n  }\n ]\n}"

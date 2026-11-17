@@ -1,7 +1,13 @@
 import { cache } from "react";
+import { randomUUID } from "node:crypto";
+import { trace } from "@opentelemetry/api";
 import { connection } from "next/server";
 import { projects as projetsLocaux } from "@/data/projects";
 import { skills as skillsLocaux, devsecopsSkills as devsecopsLocaux } from "@/data/skills";
+
+// Correlation ID (activité 8, étape 228) : un identifiant par affichage de page, envoyé à l'API
+// dans l'en-tête x-correlation-id et écrit dans les logs des deux côtés.
+const correlationId = cache(() => randomUUID());
 
 // Appel à l'API Express. L'adresse vient de la variable d'environnement API_URL,
 // lue au moment de la requête (et non au build) : la même image Docker
@@ -10,10 +16,22 @@ async function appelApi(chemin) {
   const base = process.env.API_URL;
   if (!base) throw new Error("variable API_URL non définie");
 
+  const id = correlationId();
+  const debut = Date.now();
   const reponse = await fetch(`${base}${chemin}`, {
+    headers: { "x-correlation-id": id },
     cache: "no-store", // toujours les données à jour
     signal: AbortSignal.timeout(3000), // pas d'attente infinie si l'API ne répond pas
   });
+  console.log(JSON.stringify({
+    niveau: "info",
+    message: "appel API",
+    chemin,
+    status: reponse.status,
+    duree_ms: Date.now() - debut,
+    correlation_id: id,
+    trace_id: trace.getActiveSpan()?.spanContext().traceId,
+  }));
   if (reponse.status === 404) return null;
   if (!reponse.ok) throw new Error(`réponse ${reponse.status} pour ${chemin}`);
   return reponse.json();
@@ -44,3 +62,6 @@ export const getProject = cache((slug) =>
 export const getSkills = cache(() =>
   avecRepli("/api/skills", { skills: skillsLocaux, devsecopsSkills: devsecopsLocaux })
 );
+
+// Nombre de messages reçus (lu dans PostgreSQL par l'API), affiché dans le pied de page
+export const getStats = cache(() => avecRepli("/api/stats", null));

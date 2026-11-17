@@ -1,0 +1,15 @@
+# Étape 229 : Grafana Tempo (chart grafana/tempo, mode monolithique) – reçoit les traces OTLP
+tempo:
+  retention: 24h
+  receivers:
+    otlp:
+      protocols:
+        http:
+          endpoint: 0.0.0.0:4318      # utilisé par l'API et par Next.js
+        grpc:
+          endpoint: 0.0.0.0:4317
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+persistence:
+  enabled: false                      # traces de labo : stockage local du Pod

@@ -1,0 +1,31 @@
+# Étapes 197-198 : environnement DEV – 1 replica frontend + 1 replica API
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: portfolio-dev
+resources:
+  - namespace.yaml
+  - ../../base
+labels:
+  - pairs: { environment: dev }
+    includeSelectors: false
+replicas:
+  - name: frontend
+    count: 1
+  - name: api
+    count: 1
+configMapGenerator:
+  - name: frontend-config
+    behavior: merge
+    literals:
+      # étape 198 : API_URL propre à l'environnement (nom DNS complet du Service de l'API)
+      - API_URL=http://api.portfolio-dev.svc.cluster.local:4000
+  - name: api-config
+    behavior: merge
+    literals:
+      - CORS_ORIGIN=http://dev.portfolio.local:8088,http://dev.portfolio.local
+patches:
+  - target: { kind: Ingress, name: portfolio }
+    patch: |-
+      - op: replace
+        path: /spec/rules/0/host
+        value: dev.portfolio.local
