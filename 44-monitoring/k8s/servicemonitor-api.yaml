@@ -1,0 +1,15 @@
+# Étape 223 : Prometheus récupère /metrics de l'API dans les 3 environnements (toutes les 15 s)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: devsecops-api
+  namespace: monitoring
+spec:
+  namespaceSelector:
+    matchNames: [portfolio-dev, portfolio-staging, portfolio-prod]
+  selector:
+    matchLabels: { app: api }
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s

@@ -1,0 +1,82 @@
+# Étapes 219-220 : Prometheus + Grafana (chart prometheus-community/kube-prometheus-stack), réglé pour K3s sur 1 VM
+alertmanager:
+  enabled: false                 # les alertes sont visibles dans Prometheus (étape 236)
+nodeExporter:
+  enabled: false                 # métriques des conteneurs : kubelet/cAdvisor ; des Pods : kube-state-metrics
+kubeControllerManager: { enabled: false }   # composants intégrés au binaire K3s : non joignables séparément
+kubeScheduler: { enabled: false }
+kubeEtcd: { enabled: false }
+kubeProxy: { enabled: false }
+defaultRules:
+  rules:
+    etcd: false
+    kubeControllerManager: false
+    kubeSchedulerAlerting: false
+    kubeSchedulerRecording: false
+    kubeProxy: false
+    node: false
+    nodeExporterAlerting: false
+    nodeExporterRecording: false
+
+prometheus:
+  prometheusSpec:
+    retention: 24h
+    scrapeInterval: 15s
+    # prendre en compte NOS ServiceMonitor / PrometheusRule (sans le label release=…)
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    resources:
+      requests: { cpu: 100m, memory: 400Mi }
+      limits: { memory: 1200Mi }
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts: [prometheus.local]    # http://prometheus.local:8088
+
+grafana:
+  admin:
+    existingSecret: grafana-admin          # mot de passe généré (openssl rand), jamais dans Git
+    userKey: admin-user
+    passwordKey: admin-password
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hosts: [grafana.local]                 # http://grafana.local:8088
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard             # ConfigMaps de tableaux de bord chargés automatiquement
+      searchNamespace: ALL
+  # Étapes 229-233 : Loki (logs) et Tempo (traces), reliés entre eux par trace_id
+  additionalDataSources:
+    - name: Loki
+      uid: loki
+      type: loki
+      access: proxy
+      url: http://loki.monitoring.svc.cluster.local:3100
+      jsonData:
+        derivedFields:                     # log -> trace : lien sur le champ "trace_id" des logs JSON
+          - name: trace_id
+            matcherType: regex
+            matcherRegex: '"trace_id":"(\w+)"'
+            url: '$${__value.raw}'
+            datasourceUid: tempo
+            urlDisplayLabel: Voir la trace dans Tempo
+    - name: Tempo
+      uid: tempo
+      type: tempo
+      access: proxy
+      url: http://tempo.monitoring.svc.cluster.local:3200
+      jsonData:
+        tracesToLogsV2:                    # trace -> logs : tous les logs portant ce trace_id
+          datasourceUid: loki
+          spanStartTimeShift: -5m
+          spanEndTimeShift: 5m
+          filterByTraceID: false
+          customQuery: true
+          query: '{namespace=~"portfolio-.*"} |= "$${__trace.traceId}"'
+        serviceMap:
+          datasourceUid: prometheus
+        nodeGraph:
+          enabled: true

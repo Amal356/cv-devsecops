@@ -70,6 +70,8 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 - [Étapes 201 à 204 – Images Harbor et vérification des signatures (Kyverno)](40-registre-signature/README.md)
 - [Étapes 205 à 210 – GitOps avec Argo CD](41-argocd/README.md)
 - [Étapes 211 à 215 – Environnements GitOps, promotion et ApplicationSet](42-gitops-environnements/README.md)
+- [Étapes 216 à 218 – Pipeline CI/CD GitOps (Jenkins → dépôt GitOps → Argo CD)](43-pipeline-gitops/README.md)
+- [Étapes 219 à 225 – Monitoring applicatif : Prometheus et Grafana (en cours)](44-monitoring/README.md)
 
 ## Architecture finale
 
