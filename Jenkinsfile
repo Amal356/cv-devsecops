@@ -191,7 +191,7 @@ pipeline {
                     for image in api portfolio; do
                         docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$SYFT_IMAGE" \
                             "docker:devsecops-$image:$GIT_SHA" -o spdx-json > "$REPORTS/sbom-devsecops-$image.spdx.json"
-                        echo "SBOM devsecops-$image : $(grep -c '"SPDXID"' "$REPORTS/sbom-devsecops-$image.spdx.json") éléments SPDX"
+                        echo "SBOM devsecops-$image : $(grep -o '"SPDXID"' "$REPORTS/sbom-devsecops-$image.spdx.json" | wc -l) éléments SPDX"
                     done
                 '''
             }

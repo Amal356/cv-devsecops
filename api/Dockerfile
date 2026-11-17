@@ -53,4 +53,4 @@ HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=3 \
   CMD wget -qO- http://127.0.0.1:4000/api/health || exit 1
 
 # Migrations Prisma en attente, puis démarrage de l'API (npx n'existe plus : appel direct du CLI Prisma)
-CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && exec node src/server.js"]
+CMD ["sh", "-c", "node node_modules/prisma/build/index.js migrate deploy && exec node --import ./src/otel.js src/server.js"]
