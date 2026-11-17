@@ -68,6 +68,8 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 - [Étapes 190 à 195 – Helm](38-helm/README.md)
 - [Étapes 196 à 200 – Kustomize](39-kustomize/README.md)
 - [Étapes 201 à 204 – Images Harbor et vérification des signatures (Kyverno)](40-registre-signature/README.md)
+- [Étapes 205 à 210 – GitOps avec Argo CD](41-argocd/README.md)
+- [Étapes 211 à 215 – Environnements GitOps, promotion et ApplicationSet](42-gitops-environnements/README.md)
 
 ## Architecture finale
 

@@ -38,6 +38,9 @@ ENV NODE_ENV=production \
     PORT=4000 \
     CHECKPOINT_DISABLE=1 \
     PRISMA_HIDE_UPDATE_MESSAGE=1
+# Version de l'image (activité 8, étape 210) : affichée par /api/health
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
 WORKDIR /app
 
 # Fichiers appartenant à root, en lecture seule pour l'utilisateur node : l'API ne peut pas modifier son code

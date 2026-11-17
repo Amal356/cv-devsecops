@@ -1,0 +1,19 @@
+# Étape 207 : Argo CD déploie automatiquement envs/dev du dépôt GitOps dans portfolio-dev
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: portfolio-dev
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Amal356/devsecops-portfolio-gitops.git
+    targetRevision: main
+    path: envs/dev
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: portfolio-dev
+  syncPolicy:
+    automated:
+      prune: true        # une ressource supprimée de Git est supprimée du cluster
+      selfHeal: true     # une modification manuelle dans le cluster est annulée (étape 209)

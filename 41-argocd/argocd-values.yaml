@@ -1,0 +1,15 @@
+# Étape 205 : valeurs Helm d'Argo CD (chart argo/argo-cd)
+configs:
+  params:
+    server.insecure: true            # TLS terminé par Traefik / accès HTTP de labo
+  cm:
+    timeout.reconciliation: 60s      # Argo CD relit le dépôt Git toutes les 60 s (180 s par défaut)
+dex:
+  enabled: false                     # pas de SSO : compte admin local
+notifications:
+  enabled: false
+server:
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    hostname: argocd.local           # http://argocd.local:8088 depuis Windows
