@@ -1,0 +1,8 @@
+apiVersion: v2
+name: devsecops-portfolio
+description: DevSecOps Portfolio – frontend Next.js et API Express (activité 8, étapes 191 à 195)
+type: application
+version: 0.1.0          # version du chart
+appVersion: "1.6.0"    # version de l'application
+maintainers:
+  - name: Amal Jemli

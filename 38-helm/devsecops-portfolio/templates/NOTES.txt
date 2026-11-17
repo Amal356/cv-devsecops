@@ -1,0 +1,6 @@
+DevSecOps Portfolio {{ .Chart.AppVersion }} déployé dans le namespace {{ .Release.Namespace }} (révision {{ .Release.Revision }}).
+  Frontend : {{ .Values.frontend.image }}:{{ .Values.frontend.tag }} x {{ .Values.replicas.frontend }}
+  API      : {{ .Values.api.image }}:{{ .Values.api.tag }} x {{ .Values.replicas.api }}
+{{- if .Values.ingress.enabled }}
+  URL      : https://{{ .Values.ingress.host }}
+{{- end }}

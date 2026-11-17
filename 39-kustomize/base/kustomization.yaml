@@ -1,0 +1,31 @@
+# Étape 196 : base commune aux 3 environnements (aucun namespace ici : il est fixé par chaque overlay)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+labels:
+  - pairs: { app.kubernetes.io/part-of: devsecops-portfolio }
+    includeSelectors: false
+resources:
+  - serviceaccount.yaml
+  - postgres.yaml
+  - api.yaml
+  - frontend.yaml
+  - ingress.yaml
+# Les ConfigMaps sont générées : un suffixe de hash est ajouté au nom,
+# donc toute modification relance automatiquement les Pods concernés.
+configMapGenerator:
+  - name: api-config
+    literals:
+      - NODE_ENV=production
+      - PORT=4000
+      - CORS_ORIGIN=http://portfolio.local
+      - CHECKPOINT_DISABLE=1
+      - HOME=/tmp
+  - name: frontend-config
+    literals:
+      - API_URL=http://api:4000
+      - NEXT_TELEMETRY_DISABLED=1
+images:
+  - name: devsecops-api
+    newTag: "1.6.0"
+  - name: devsecops-portfolio
+    newTag: "1.6.0"

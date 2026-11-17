@@ -1,0 +1,11 @@
+# Étapes 201-202 : le chart Helm (38-helm) utilise les images de Harbor + l'imagePullSecret
+frontend:
+  image: localhost:8090/devsecops/devsecops-portfolio
+  tag: "1.6.0"
+  pullPolicy: Always
+api:
+  image: localhost:8090/devsecops/devsecops-api
+  tag: "1.6.0"
+  pullPolicy: Always
+imagePullSecrets:
+  - name: harbor-pull

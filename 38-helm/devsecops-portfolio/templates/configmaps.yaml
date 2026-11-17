@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: api-config
+  labels:
+    {{- include "portfolio.labels" . | nindent 4 }}
+data:
+  NODE_ENV: production
+  PORT: "4000"
+  CORS_ORIGIN: {{ .Values.api.corsOrigin | quote }}
+  CHECKPOINT_DISABLE: "1"
+  HOME: /tmp
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frontend-config
+  labels:
+    {{- include "portfolio.labels" . | nindent 4 }}
+data:
+  API_URL: {{ .Values.frontend.apiUrl | quote }}
+  NEXT_TELEMETRY_DISABLED: "1"

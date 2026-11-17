@@ -1,0 +1,8 @@
+# Étape 201 : /etc/rancher/k3s/registries.yaml
+# Harbor écoute en HTTP sur localhost:8090 (activité 5) : on indique à containerd (K3s)
+# d'utiliser HTTP pour ce registre. Les identifiants ne sont PAS ici : chaque Pod utilise
+# un imagePullSecret (étape 202).
+mirrors:
+  "localhost:8090":
+    endpoint:
+      - "http://localhost:8090"

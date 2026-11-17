@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  labels:
+    app: api
+    {{- include "portfolio.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicas.api }}
+  {{- end }}
+  selector:
+    matchLabels: { app: api }          # identique à l'activité 7 (sélecteur non modifiable)
+  template:
+    metadata:
+      labels:
+        app: api
+        {{- include "portfolio.labels" . | nindent 8 }}
+      annotations:
+        # redémarre les Pods si la configuration change
+        checksum/config: {{ include (print $.Template.BasePath "/configmaps.yaml") . | sha256sum }}
+    spec:
+      {{- include "portfolio.podSecurity" . | nindent 6 }}
+      containers:
+        - name: api
+          image: "{{ .Values.api.image }}:{{ .Values.api.tag }}"
+          imagePullPolicy: {{ .Values.api.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 4000
+          envFrom:
+            - configMapRef: { name: api-config }
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: {{ toJson .Values.api.secrets.databaseUrl }}
+            - name: API_DEMO_TOKEN
+              valueFrom:
+                secretKeyRef: {{ toJson .Values.api.secrets.demoToken }}
+          {{- include "portfolio.containerSecurity" . | nindent 10 }}
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          readinessProbe:
+            httpGet: { path: /api/health, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /api/health, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  labels:
+    app: api
+    {{- include "portfolio.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector: { app: api }
+  ports:
+    - { name: http, port: 4000, targetPort: 4000 }
+{{- if .Values.autoscaling.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api
+  labels:
+    {{- include "portfolio.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: api }
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: {{ .Values.autoscaling.cpuUtilization }} }
+{{- end }}
