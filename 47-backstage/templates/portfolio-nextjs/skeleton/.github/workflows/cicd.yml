@@ -33,14 +33,13 @@ jobs:
 
       - name: 2-3. Build de l'application et construction de l'image Docker
         run: |
-          docker build --build-arg APP_VERSION="$VERSION" -t "$IMAGE:$VERSION" -t "$IMAGE:latest" .
+          docker build --network host --build-arg APP_VERSION="$VERSION" -t "$IMAGE:$VERSION" -t "$IMAGE:latest" .
           docker images "$IMAGE" --format "{{.Repository}}:{{.Tag}}  {{.Size}}"
 
       - name: 4. Authentification auprès de Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ env.DOCKERHUB_USER }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USER" --password-stdin
 
       - name: 5. Publication de l'image sur Docker Hub
         run: |
