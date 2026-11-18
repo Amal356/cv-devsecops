@@ -70,3 +70,11 @@ Chaîne de l'étape 7 :
 Modification du code (template « Évolution », pull request fusionnée)
   -> build de l'application -> image Docker vN -> Docker Hub -> docker compose up -> /api/health OK
 ```
+
+## Problèmes rencontrés
+
+- **`yarn install` interrompu (`Timeout`)** pendant `create-app` : relancé dans `~/backstage` avec `yarn config set httpTimeout 600000` et `networkConcurrency 8` (installation terminée en 11 min, 1,8 Go de `node_modules`).
+- **Page blanche puis `ERR_CONNECTION_RESET`** sur `http://localhost:3001` : Backstage tournait (`Rspack compiled successfully`), mais le **pare-feu UFW** de la VM (activité 1) bloquait les nouveaux ports. Correction : `sudo ufw allow 3001/tcp`, `7007/tcp` et `3000/tcp`.
+- **Fusion de la pull request v2 bloquée (« Review required »)** : l'action `publish:github` protège la branche `main` par défaut (une relecture obligatoire, même pour l'administratrice). Dans un dépôt de TP à une seule personne, la règle a été supprimée (*Settings → Branches*) et le template utilise désormais `protectDefaultBranch: false`.
+- **Disque de la VM à 96 %** après l'installation : caches Yarn, npm et images Docker inutilisées supprimés ; K3s, Harbor et Jenkins arrêtés pendant l'activité (sans rien supprimer).
+- **Runner auto-hébergé sur un dépôt public** : GitHub le déconseille (une pull request externe pourrait exécuter du code sur la VM). Acceptable pour un TP local ; en entreprise : dépôt privé, runners éphémères ou approbation obligatoire des workflows venant de forks.
