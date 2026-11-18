@@ -1,0 +1,74 @@
+# Cycle de livraison complet, déclenché par Backstage (création du dépôt, template de relivraison)
+# et à chaque push sur main. Le job s'exécute sur le runner GitHub Actions installé sur la VM.
+name: CI/CD Portfolio (Backstage)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      motif:
+        description: "Motif de la livraison"
+        required: false
+        default: "relivraison depuis Backstage"
+
+concurrency:
+  group: livraison-locale
+  cancel-in-progress: false
+
+jobs:
+  livraison:
+    runs-on: [self-hosted, linux]
+    env:
+      VERSION: v${{ github.run_number }}          # convention de version : v1, v2, v3…
+    steps:
+      - name: 1. Récupération du code
+        uses: actions/checkout@v4
+
+      - name: Paramètres de déploiement
+        run: |
+          set -a; . ./deploy.env; set +a
+          echo "IMAGE=$DOCKERHUB_USER/portfolio-nextjs" >> "$GITHUB_ENV"
+          echo "DOCKERHUB_USER=$DOCKERHUB_USER" >> "$GITHUB_ENV"
+
+      - name: 2-3. Build de l'application et construction de l'image Docker
+        run: |
+          docker build --build-arg APP_VERSION="$VERSION" -t "$IMAGE:$VERSION" -t "$IMAGE:latest" .
+          docker images "$IMAGE" --format "{{.Repository}}:{{.Tag}}  {{.Size}}"
+
+      - name: 4. Authentification auprès de Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKERHUB_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: 5. Publication de l'image sur Docker Hub
+        run: |
+          docker push "$IMAGE:$VERSION"
+          docker push "$IMAGE:latest"
+
+      - name: 6. Déploiement local (docker compose)
+        run: |
+          IMAGE_TAG="$VERSION" docker compose --env-file deploy.env up -d --remove-orphans
+          docker compose --env-file deploy.env ps
+
+      - name: 7. Vérification de santé
+        run: |
+          for i in $(seq 1 30); do
+            if reponse=$(curl -fsS http://localhost:3000/api/health); then
+              echo "$reponse"
+              echo "$reponse" | grep -q "\"$VERSION\"" && exit 0
+            fi
+            sleep 2
+          done
+          echo "Le service ne répond pas avec la version $VERSION"; exit 1
+
+      - name: Résumé
+        if: always()
+        run: |
+          {
+            echo "## Livraison ${VERSION} : ${{ job.status }}"
+            echo "- Image : \`$IMAGE:$VERSION\` (https://hub.docker.com/r/$IMAGE/tags)"
+            echo "- Application : http://localhost:3000"
+            echo "- Santé : http://localhost:3000/api/health"
+          } >> "$GITHUB_STEP_SUMMARY"

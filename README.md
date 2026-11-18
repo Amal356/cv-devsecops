@@ -73,6 +73,12 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 - [Étapes 216 à 218 – Pipeline CI/CD GitOps (Jenkins → dépôt GitOps → Argo CD)](43-pipeline-gitops/README.md)
 - [Étapes 219 à 225 – Monitoring applicatif : Prometheus et Grafana (en cours)](44-monitoring/README.md)
 
+### Activité 9 – Platform Engineering avec Backstage
+
+- [Backstage : création, build, publication sur Docker Hub et déploiement d'un Portfolio Next.js](47-backstage/README.md)
+- Dépôt généré par Backstage : https://github.com/Amal356/portfolio-nextjs-amal
+- Image Docker : https://hub.docker.com/r/amal878/portfolio-nextjs
+
 ## Architecture finale
 
 ```

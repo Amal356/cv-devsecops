@@ -1,0 +1,101 @@
+# Étapes 1 à 6 : un formulaire Backstage crée, publie, construit, pousse et déploie le Portfolio
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: portfolio-nextjs-template
+  title: Portfolio Next.js (Docker + Docker Hub + déploiement local)
+  description: Génère un Portfolio Next.js, son dépôt GitHub, ses artefacts Docker et son pipeline de livraison.
+  tags: [nextjs, docker, recommended]
+spec:
+  owner: user:guest
+  type: website
+
+  parameters:
+    - title: Informations du Portfolio
+      required: [name, fullName, jobTitle, description]
+      properties:
+        name:
+          title: Nom du composant (et du dépôt)
+          type: string
+          default: portfolio-nextjs-amal
+          pattern: '^[a-z0-9-]+$'
+          ui:autofocus: true
+        fullName:
+          title: Nom complet
+          type: string
+          default: Amal Jemli
+        jobTitle:
+          title: Titre affiché
+          type: string
+          default: Étudiante en Master DevOps et Cloud Computing – ISET Tozeur
+        description:
+          title: Présentation
+          type: string
+          default: Je construis des applications web et j'automatise leur livraison (conteneurs, CI/CD, GitOps).
+          ui:widget: textarea
+    - title: Dépôt GitHub et Docker Hub
+      required: [repoUrl, dockerhubUser, dockerhubToken]
+      properties:
+        repoUrl:
+          title: Dépôt à créer
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts: [github.com]
+        dockerhubUser:
+          title: Utilisateur Docker Hub
+          type: string
+          default: amal878
+        dockerhubToken:
+          title: Jeton Docker Hub (Read & Write)
+          type: string
+          ui:field: Secret          # jamais affiché ni enregistré dans la tâche Backstage
+
+  steps:
+    - id: generer
+      name: Générer le projet Next.js et les artefacts Docker
+      action: fetch:template
+      input:
+        url: ./skeleton
+        copyWithoutTemplating:
+          - .github/workflows/*     # expressions GitHub Actions ${{ }} à conserver telles quelles
+          - package-lock.json
+        values:
+          name: ${{ parameters.name }}
+          fullName: ${{ parameters.fullName }}
+          jobTitle: ${{ parameters.jobTitle }}
+          description: ${{ parameters.description }}
+          dockerhubUser: ${{ parameters.dockerhubUser }}
+          owner: user:guest
+          repoSlug: ${{ (parameters.repoUrl | parseRepoUrl).owner }}/${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: publier
+      name: Créer le dépôt GitHub (code, README, secret Docker Hub)
+      action: publish:github
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        description: Portfolio Next.js généré par Backstage
+        defaultBranch: main
+        repoVisibility: public
+        gitCommitMessage: "feat: projet Portfolio Next.js généré par Backstage"
+        secrets:
+          DOCKERHUB_TOKEN: ${{ secrets.dockerhubToken }}
+
+    - id: enregistrer
+      name: Enregistrer le composant dans le Catalogue
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps['publier'].output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+
+  output:
+    links:
+      - title: Dépôt GitHub
+        url: ${{ steps['publier'].output.remoteUrl }}
+      - title: Pipeline de livraison (build, Docker Hub, déploiement)
+        url: ${{ steps['publier'].output.remoteUrl }}/actions
+      - title: Composant dans le Catalogue
+        icon: catalog
+        entityRef: ${{ steps['enregistrer'].output.entityRef }}
+      - title: Application déployée
+        url: http://localhost:3000

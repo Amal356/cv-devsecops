@@ -1,0 +1,62 @@
+# Étape 7 : évolution du Portfolio (v2) proposée depuis Backstage sous forme de pull request.
+# La fusion de la PR sur GitHub déclenche automatiquement tout le cycle de livraison.
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: portfolio-nextjs-evolution
+  title: Évolution du Portfolio (Certifications, Projets DevOps & Cloud, mode sombre)
+  description: Ajoute les nouvelles sections et le mode sombre, met à jour les informations personnelles, et ouvre une pull request.
+  tags: [nextjs, evolution]
+spec:
+  owner: user:guest
+  type: website
+  parameters:
+    - title: Nouvelles informations
+      required: [repoUrl, fullName, jobTitle]
+      properties:
+        repoUrl:
+          title: Dépôt du Portfolio
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts: [github.com]
+        fullName:
+          title: Nom complet
+          type: string
+          default: Amal Jemli
+        jobTitle:
+          title: Titre (mis à jour)
+          type: string
+          default: Ingénieure DevOps & Cloud – Master DevOps et Cloud Computing, ISET Tozeur
+        email:
+          title: E-mail de contact
+          type: string
+          default: amal.jemli@example.test
+  steps:
+    - id: generer
+      name: Générer la version 2 du Portfolio
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          fullName: ${{ parameters.fullName }}
+          jobTitle: ${{ parameters.jobTitle }}
+          email: ${{ parameters.email }}
+    - id: pr
+      name: Ouvrir la pull request « Portfolio v2 »
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        branchName: evolution-portfolio-v2
+        title: "feat: Portfolio v2 (Certifications, Projets DevOps & Cloud, mode sombre)"
+        description: |
+          Évolution demandée par le client, générée par Backstage :
+          - section « Certifications »
+          - section « Projets DevOps & Cloud »
+          - mode sombre (bouton clair / sombre, mémorisé)
+          - informations personnelles mises à jour
+          La fusion déclenche le pipeline : build -> image vN -> Docker Hub -> déploiement local -> santé.
+  output:
+    links:
+      - title: Pull request à fusionner
+        url: ${{ steps['pr'].output.remoteUrl }}

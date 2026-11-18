@@ -1,0 +1,32 @@
+# Configuration locale de Backstage (~/backstage/app-config.local.yaml) – aucun secret ici :
+# le jeton GitHub est lu dans la variable d'environnement GITHUB_TOKEN.
+app:
+  baseUrl: http://localhost:3001
+  listen:
+    host: 0.0.0.0
+    port: 3001
+
+backend:
+  baseUrl: http://localhost:7007
+  listen:
+    host: 0.0.0.0
+    port: 7007
+  cors:
+    origin: http://localhost:3001
+
+integrations:
+  github:
+    - host: github.com
+      token: ${GITHUB_TOKEN}
+
+catalog:
+  locations:
+    - type: file
+      target: ../../../cv-devsecops/47-backstage/templates/portfolio-nextjs/template.yaml
+      rules: [{ allow: [Template] }]
+    - type: file
+      target: ../../../cv-devsecops/47-backstage/templates/portfolio-evolution/template.yaml
+      rules: [{ allow: [Template] }]
+    - type: file
+      target: ../../../cv-devsecops/47-backstage/templates/portfolio-relivraison/template.yaml
+      rules: [{ allow: [Template] }]

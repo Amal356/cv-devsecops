@@ -1,0 +1,41 @@
+# Étape 7 : relancer TOUT le cycle de livraison depuis Backstage (sans commande git/docker)
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: portfolio-nextjs-relivraison
+  title: Relancer la livraison du Portfolio
+  description: Récupère le code, reconstruit l'image (nouvelle version vN), la publie sur Docker Hub, redéploie et vérifie la santé.
+  tags: [nextjs, cicd]
+spec:
+  owner: user:guest
+  type: service
+  parameters:
+    - title: Livraison
+      required: [repoUrl]
+      properties:
+        repoUrl:
+          title: Dépôt du Portfolio
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts: [github.com]
+        motif:
+          title: Motif
+          type: string
+          default: nouvelle version du Portfolio
+  steps:
+    - id: declencher
+      name: Déclencher le workflow CI/CD (GitHub Actions)
+      action: github:actions:dispatch
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        workflowId: cicd.yml
+        branchOrTagName: main
+        workflowInputs:
+          motif: ${{ parameters.motif }}
+  output:
+    links:
+      - title: Suivre la livraison (statut du workflow)
+        url: https://github.com/${{ (parameters.repoUrl | parseRepoUrl).owner }}/${{ (parameters.repoUrl | parseRepoUrl).repo }}/actions
+      - title: Application
+        url: http://localhost:3000
