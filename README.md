@@ -71,7 +71,9 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 - [Étapes 205 à 210 – GitOps avec Argo CD](41-argocd/README.md)
 - [Étapes 211 à 215 – Environnements GitOps, promotion et ApplicationSet](42-gitops-environnements/README.md)
 - [Étapes 216 à 218 – Pipeline CI/CD GitOps (Jenkins → dépôt GitOps → Argo CD)](43-pipeline-gitops/README.md)
-- [Étapes 219 à 225 – Monitoring applicatif : Prometheus et Grafana (en cours)](44-monitoring/README.md)
+- [Étapes 219 à 225 – Monitoring applicatif : Prometheus et Grafana](44-monitoring/README.md)
+- [Étapes 226 à 230 – OpenTelemetry et traces distribuées (Tempo)](45-opentelemetry/README.md)
+- [Étapes 231 à 233 – Centralisation des logs (Loki) : métrique → log → trace](46-logs/README.md)
 
 ## Architecture finale
 
