@@ -10,7 +10,9 @@ if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
 
   const { NodeSDK } = await import("@opentelemetry/sdk-node");
   const { getNodeAutoInstrumentations } = await import("@opentelemetry/auto-instrumentations-node");
-  const { PrismaInstrumentation } = (await import("@prisma/instrumentation")).default; // module CommonJS
+  const prismaMod = await import("@prisma/instrumentation");
+  // Prisma 6 exporte PrismaInstrumentation directement ; Prisma 5 le plaçait sous « default » (CommonJS)
+  const PrismaInstrumentation = prismaMod.PrismaInstrumentation ?? prismaMod.default?.PrismaInstrumentation;
 
   const sdk = new NodeSDK({
     serviceName: process.env.OTEL_SERVICE_NAME || "devsecops-api",
