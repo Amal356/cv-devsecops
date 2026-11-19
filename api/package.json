@@ -41,5 +41,8 @@
   "jest": {
     "testEnvironment": "node",
     "transform": {}
+  },
+  "overrides": {
+    "deepmerge-ts": "^8.0.0"
   }
 }
