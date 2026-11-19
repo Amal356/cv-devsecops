@@ -5,7 +5,6 @@
 generator client {
   provider        = "prisma-client-js"
   // spans OpenTelemetry des requêtes SQL (activité 8, étape 226)
-  previewFeatures = ["tracing"]
   // native : machine de développement ; linux-musl-openssl-3.0.x : image node:22-alpine
   binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
 }
