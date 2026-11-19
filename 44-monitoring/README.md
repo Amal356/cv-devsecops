@@ -1,6 +1,6 @@
 # Activité 8 – Partie 42 : Monitoring applicatif (étapes 219 à 225)
 
-> **État :** étapes 219 à 221 terminées. Étapes 222 à 225 en cours : le code (route `/metrics`) est livré par le pipeline, et le ServiceMonitor et le tableau de bord de l'API sont prêts.
+> **État :** étapes 219 à 225 terminées.
 
 ```text
  kubelet/cAdvisor ─┐
@@ -52,3 +52,87 @@ Le tableau de bord « Portfolio – Kubernetes » est importé automatiquement d
 Un tableau de bord officiel a aussi été importé depuis grafana.com (*Dashboards → New → Import*, ID **15760** « Kubernetes / Views / Pods »), ici sur `portfolio-prod` :
 
 ![Tableau de bord 15760 importé](screenshots/221c-dashboard-importe-15760.png)
+
+## Étape 222 – Route `/metrics` de l'API
+
+L'API Express expose ses métriques au format Prometheus (`prom-client`) sur `/metrics` : nombre de requêtes par route et code HTTP, erreurs 5xx, et histogramme de latence. Les URL inconnues sont regroupées sous `route="non_trouvee"` pour éviter une série par URL inventée.
+
+Exemple (DEV, après 2 contrôles de santé et 25 requêtes vers des routes inexistantes) :
+
+```text
+# HELP http_requests_total Nombre de requêtes HTTP reçues par l'API
+# TYPE http_requests_total counter
+http_requests_total{method="GET",route="/api/health",status_code="200"} 2
+http_requests_total{method="GET",route="non_trouvee",status_code="404"} 25
+# HELP http_request_errors_total Nombre de réponses en erreur (codes 5xx)
+# TYPE http_request_errors_total counter
+# HELP http_request_duration_seconds Durée de traitement des requêtes HTTP (secondes)
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{le="0.025",method="GET",route="/api/health",status_code="200"} 2
+http_request_duration_seconds_sum{method="GET",route="/api/health",status_code="200"} 0.015299837
+http_request_duration_seconds_count{method="GET",route="/api/health",status_code="200"} 2
+```
+
+## Étape 223 – Prometheus récupère les métriques de l'API
+
+Le ServiceMonitor [`devsecops-api`](k8s/servicemonitor-api.yaml) fait lire `/metrics` toutes les 15 s dans `portfolio-dev`, `portfolio-staging` et `portfolio-prod`. Après la livraison de la version corrigée (build Jenkins #97, puis promotion GitOps DEV → STAGING → PROD avec le même digest signé `sha256:e09d624f…`), les 7 Pods API sont `up` :
+
+```text
+portfolio-dev     api-64b8555cfb-c969z  up
+portfolio-dev     api-64b8555cfb-m9wj9  up
+portfolio-prod    api-6cffcbf995-z2tvh  up
+portfolio-prod    api-6cffcbf995-499nk  up
+portfolio-prod    api-6cffcbf995-ddxsd  up
+portfolio-staging api-955d75847-xqdwl   up
+portfolio-staging api-955d75847-wsd6f   up
+```
+
+Pipeline Jenkins complet ayant livré la correction (tests, scans, build, Trivy, SBOM, Harbor, Cosign, GitOps) :
+
+![Pipeline Jenkins #96](screenshots/223a-jenkins-build-96-correctif.png)
+
+## Étape 224 – Requêtes, taux d'erreurs et latence dans Grafana
+
+Tableau de bord « Portfolio – API » ([`k8s/dashboard-api.yaml`](k8s/dashboard-api.yaml)), filtrable par environnement, avec du trafic de test (routes normales et quelques 404) :
+
+![Requêtes, erreurs et latence](screenshots/224a-grafana-api-requetes-erreurs-latence.png)
+
+![Latence p50/p95/p99, Pods disponibles et logs Loki](screenshots/224b-grafana-api-latence-pods-logs.png)
+
+| Panneau | Valeur observée |
+| :--- | :--- |
+| Requêtes/s | 18,2 req/s (DEV + PROD) |
+| Taux d'erreurs 5xx | 0 % (`or vector(0)` affiche 0 au lieu de « No data » quand aucune erreur n'existe) |
+| Latence p95 | 4,9 ms (p50 ≈ 2 ms, p99 < 10 ms) |
+| Pods API disponibles | prod 3, staging 2, dev 2 |
+
+Les 404 sont visibles dans « Requêtes HTTP par route » (`non_trouvee 404`) : ce sont des erreurs client, non comptées dans le taux d'erreurs serveur (5xx).
+
+## Étape 225 – Suppression manuelle d'un Pod API
+
+```text
+== 18:27:23 suppression de api-6cffcbf995-499nk
+18:27:23  disponibles=2/3
+...
+18:27:39  disponibles=2/3
+18:27:42  disponibles=3/3
+NAME                   READY   STATUS    RESTARTS   AGE
+api-6cffcbf995-ddxsd   1/1     Running   0          65m
+api-6cffcbf995-fw6lg   1/1     Running   0          32s
+api-6cffcbf995-z2tvh   1/1     Running   0          64m
+```
+
+Le ReplicaSet recrée immédiatement un Pod (`fw6lg`) ; il n'est compté disponible qu'après sa readiness probe (`/api/health`), soit environ 19 s. Dans Grafana, « Pods API disponibles » descend de 3 à 2 puis remonte, tandis que les requêtes/s et le taux d'erreurs (0 %) ne bougent pas : grâce aux 3 réplicas, la panne d'un Pod est invisible pour les utilisateurs.
+
+![Suppression d'un Pod API en PROD](screenshots/225-suppression-pod-api-prod.png)
+
+## Problèmes rencontrés (étapes 222 à 225)
+
+| Problème | Cause | Correction |
+| :--- | :--- | :--- |
+| API DEV en `CrashLoopBackOff` (`parentTracer.getSpanLimits is not a function`) à la première requête SQL ; cibles Prometheus `down` | `@prisma/instrumentation` 5.22 embarquait sa propre copie d'OpenTelemetry 1.x, incompatible avec OpenTelemetry v2 | Prisma 6.19.3 (PR #36) |
+| Build Jenkins #95 bloqué par Dependency-Check | `deepmerge-ts` 7.1.5 (GHSA-ggr8-5vv4-36mx, CVSS 10), apporté par Prisma 6 | `overrides` npm `deepmerge-ts ^8.0.0` (PR #37), sans passer à Prisma 7 |
+| Nouvelle API encore en échec au démarrage (`Cannot destructure property 'PrismaInstrumentation'`) | Prisma 6 n'exporte plus la classe sous `default` ; les tests tournaient sans OpenTelemetry | import compatible + test de démarrage avec `OTEL_EXPORTER_OTLP_ENDPOINT` (PR #38, 25 tests) |
+| STAGING/PROD : `/metrics` en 404 | ancienne version | promotion GitOps DEV → STAGING → PROD (même digest, sans rebuild) |
+| Pods expulsés en série, nœud `DiskPressure`, Argo CD `Pending` | disque à plus de 85 % pendant les builds (seuil d'éviction du kubelet : 15 % libre) | disque virtuel passé de 50 à 80 Go (`VBoxManage modifymedium --resize`, puis `growpart`, `pvresize`, `lvextend -r`) : 49 % utilisé |
+| Grafana « No data » alors que Prometheus avait les données | horloge de la VM en retard de 45 min après le redémarrage : les mesures tombaient hors de la fenêtre « 15 dernières minutes » | `chronyc makestep` |

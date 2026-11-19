@@ -10,6 +10,6 @@ tempo:
           endpoint: 0.0.0.0:4317
   resources:
     requests: { cpu: 50m, memory: 128Mi }
-    limits: { memory: 512Mi }
+    limits: { memory: 1Gi }
 persistence:
   enabled: false                      # traces de labo : stockage local du Pod
