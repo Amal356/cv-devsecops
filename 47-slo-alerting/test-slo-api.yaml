@@ -1,0 +1,41 @@
+# Test unitaire des règles (promtool test rules) : l'alerte se déclenche avec 10 % d'erreurs 5xx
+# et reste silencieuse quand l'API répond correctement.
+rule_files:
+  - regles-slo-api.yaml
+evaluation_interval: 30s
+tests:
+  - interval: 30s
+    input_series:
+      # PROD : 90 requêtes réussies et 10 erreurs 5xx toutes les 30 s -> disponibilité 90 %
+      - series: 'http_requests_total{namespace="portfolio-prod",route="/api/projects",status_code="200"}'
+        values: '0+90x40'
+      - series: 'http_requests_total{namespace="portfolio-prod",route="/api/projects",status_code="500"}'
+        values: '0+10x40'
+      # STAGING : 100 % de réussite
+      - series: 'http_requests_total{namespace="portfolio-staging",route="/api/projects",status_code="200"}'
+        values: '0+100x40'
+    promql_expr_test:
+      - expr: round(api:sli_disponibilite:ratio_rate5m, 0.001)
+        eval_time: 10m
+        exp_samples:
+          - labels: '{namespace="portfolio-prod"}'
+            value: 0.9
+          - labels: '{namespace="portfolio-staging"}'
+            value: 1
+    alert_rule_test:
+      # 3 minutes : SLI sous l'objectif, mais pas encore depuis 5 minutes -> pas d'alerte
+      - eval_time: 3m
+        alertname: ApiDisponibiliteSousSLO
+        exp_alerts: []
+      # 12 minutes : alerte déclenchée pour PROD uniquement
+      - eval_time: 12m
+        alertname: ApiDisponibiliteSousSLO
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              slo: api-disponibilite
+              namespace: portfolio-prod
+            exp_annotations:
+              summary: "SLO de disponibilité de l'API non respecté (portfolio-prod)"
+              description: "Disponibilité de l'API sur 5 min : 90% (objectif : au moins 99 %)."
+              runbook_url: "https://github.com/Amal356/cv-devsecops/blob/main/47-slo-alerting/runbook-api-disponibilite.md"

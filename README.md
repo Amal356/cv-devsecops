@@ -74,6 +74,8 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 - [Étapes 219 à 225 – Monitoring applicatif : Prometheus et Grafana](44-monitoring/README.md)
 - [Étapes 226 à 230 – OpenTelemetry et traces distribuées (Tempo)](45-opentelemetry/README.md)
 - [Étapes 231 à 233 – Centralisation des logs (Loki) : métrique → log → trace](46-logs/README.md)
+- [Étapes 234 à 237 – SLI, SLO, alerte Prometheus et runbook](47-slo-alerting/README.md)
+- [Étapes 238 à 242 – DAST OWASP ZAP et tests de charge k6 dans le pipeline](48-dast-performance/README.md)
 
 ## Architecture finale
 
