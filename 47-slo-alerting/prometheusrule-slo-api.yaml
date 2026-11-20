@@ -1,0 +1,50 @@
+# Activité 8 – Partie 45 : SLI, SLO et alerting de l'API (étapes 234 à 237)
+#   SLI (234) : part des requêtes HTTP de l'API qui ne finissent pas en erreur serveur (5xx)
+#   SLO (235) : disponibilité ≥ 99 %
+#   Alerte (236) : le SLI passe sous 99 % pendant 5 minutes, avec le lien vers le runbook (237)
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: slo-api-disponibilite
+  namespace: monitoring
+  labels:
+    release: kps                      # label lu par le ruleSelector de kube-prometheus-stack
+spec:
+  groups:
+    - name: slo-api.sli
+      interval: 30s
+      rules:
+        # SLI sur 5 minutes, par environnement (requêtes réussies / requêtes totales)
+        - record: api:sli_disponibilite:ratio_rate5m
+          expr: |
+            sum by (namespace) (rate(http_requests_total{status_code!~"5.."}[5m]))
+            /
+            sum by (namespace) (rate(http_requests_total[5m]))
+        # Même SLI sur 1 heure, pour le tableau de bord et le suivi de la tendance
+        - record: api:sli_disponibilite:ratio_rate1h
+          expr: |
+            sum by (namespace) (rate(http_requests_total{status_code!~"5.."}[1h]))
+            /
+            sum by (namespace) (rate(http_requests_total[1h]))
+    - name: slo-api.alertes
+      rules:
+        - alert: ApiDisponibiliteSousSLO
+          expr: api:sli_disponibilite:ratio_rate5m < 0.99
+          for: 5m
+          labels:
+            severity: critical
+            slo: api-disponibilite
+          annotations:
+            summary: "SLO de disponibilité de l'API non respecté ({{ $labels.namespace }})"
+            description: "Disponibilité de l'API sur 5 min : {{ $value | humanizePercentage }} (objectif : au moins 99 %)."
+            runbook_url: "https://github.com/Amal356/cv-devsecops/blob/main/47-slo-alerting/runbook-api-disponibilite.md"
+        - alert: ApiIndisponible
+          expr: sum by (namespace) (up{service="api"}) == 0
+          for: 2m
+          labels:
+            severity: critical
+            slo: api-disponibilite
+          annotations:
+            summary: "Aucun Pod API joignable ({{ $labels.namespace }})"
+            description: "Prometheus ne peut lire /metrics sur aucun Pod API depuis 2 minutes."
+            runbook_url: "https://github.com/Amal356/cv-devsecops/blob/main/47-slo-alerting/runbook-api-disponibilite.md"
