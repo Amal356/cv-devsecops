@@ -1,0 +1,40 @@
+# Activité 9, partie 47 : namespace de démonstration du Progressive Delivery.
+# DEV, STAGING et PROD restent gérés par Argo CD et le pipeline Jenkins ; ici on manipule des Rollouts.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: portfolio-rollouts
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+---
+# L'API utilise « postgres:5432 » : ce nom pointe vers la base de portfolio-dev (pas de seconde base à créer)
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: portfolio-rollouts
+spec:
+  type: ExternalName
+  externalName: postgres.portfolio-dev.svc.cluster.local
+  ports:
+    - port: 5432
+---
+# Prometheus lit /metrics de chaque Service de démonstration (label « service » = nom du Service)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: api-rollouts
+  namespace: monitoring
+  labels:
+    release: kps
+spec:
+  namespaceSelector:
+    matchNames: [portfolio-rollouts]
+  selector:
+    matchLabels:
+      demo: progressive-delivery
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s

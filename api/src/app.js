@@ -8,6 +8,7 @@ import projectsRouter from "./routes/projects.js";
 import skillsRouter from "./routes/skills.js";
 import contactRouter from "./routes/contact.js";
 import statsRouter from "./routes/stats.js";
+import nouveautesRouter from "./routes/nouveautes.js";
 import { observabilite, routeMetriques } from "./middlewares/observabilite.js";
 import { errorHandler } from "./middlewares/errorHandler.js";
 
@@ -45,6 +46,7 @@ app.use("/api/projects", projectsRouter);
 app.use("/api/skills", skillsRouter);
 app.use("/api/contact", contactRouter);
 app.use("/api/stats", statsRouter);
+app.use("/api/nouveautes", nouveautesRouter);
 
 // Route inconnue : réponse JSON 404
 app.use((req, res) => {
