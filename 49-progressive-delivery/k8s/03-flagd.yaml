@@ -1,0 +1,78 @@
+# Activité 9, étape 248 : feature flags avec OpenFeature + flagd
+# - ConfigMap "flags" : la définition des flags (c'est ici qu'on ACTIVE une fonctionnalité)
+# - Deployment/Service "flagd" : le moteur de flags, interrogé par l'API en HTTP (protocole OFREP, port 8016)
+# Changer "defaultVariant" dans la ConfigMap active/désactive la fonctionnalité SANS redéployer l'API.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flags
+  namespace: portfolio-rollouts
+data:
+  flags.json: |
+    {
+      "$schema": "https://flagd.dev/schema/v0/flags.json",
+      "flags": {
+        "api-nouveautes": {
+          "state": "ENABLED",
+          "variants": { "on": true, "off": false },
+          "defaultVariant": "off",
+          "targeting": {
+            "if": [ { "==": [ { "var": "groupe" }, "beta" ] }, "on", null ]
+          }
+        }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flagd
+  namespace: portfolio-rollouts
+  labels: { app: flagd }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: flagd }
+  template:
+    metadata:
+      labels: { app: flagd }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: flagd
+          image: ghcr.io/open-feature/flagd:v0.19.0
+          args: ["start", "--uri", "file:/etc/flagd/flags.json"]
+          ports:
+            - { name: ofrep, containerPort: 8016 }
+            - { name: gestion, containerPort: 8014 }
+          readinessProbe:
+            httpGet: { path: /readyz, port: gestion }
+          livenessProbe:
+            httpGet: { path: /healthz, port: gestion }
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+          volumeMounts:
+            - { name: flags, mountPath: /etc/flagd, readOnly: true }
+      volumes:
+        - name: flags
+          configMap: { name: flags }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flagd
+  namespace: portfolio-rollouts
+spec:
+  selector: { app: flagd }
+  ports:
+    - { name: ofrep, port: 8016, targetPort: ofrep }
