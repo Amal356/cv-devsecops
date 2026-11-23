@@ -1,0 +1,43 @@
+rollout.argoproj.io/api-canary patched
+11:10:23  étape=0/7  poids_canary=0%  phase=Progressing  →  codes POST /api/contact : 10 201 30 429
+11:10:29  étape=0/7  poids_canary=0%  phase=Progressing  →  codes POST /api/contact : 40 429
+11:10:35  étape=0/7  poids_canary=0%  phase=Progressing  →  codes POST /api/contact : 40 429
+11:10:41  étape=1/7  poids_canary=10%  phase=Paused  →  codes POST /api/contact : 36 429 4 500
+11:10:47  étape=1/7  poids_canary=10%  phase=Paused  →  codes POST /api/contact : 36 429 4 500
+11:10:53  étape=1/7  poids_canary=10%  phase=Paused  →  codes POST /api/contact : 36 429 4 500
+11:10:59  étape=1/7  poids_canary=10%  phase=Paused  →  codes POST /api/contact : 36 429 4 500
+11:11:05  étape=1/7  poids_canary=10%  phase=Paused  →  codes POST /api/contact : 36 429 4 500
+11:11:11  étape=1/7  poids_canary=10%  phase=Paused  →  codes POST /api/contact : 36 429 4 500
+11:11:17  étape=1/7  poids_canary=10%  phase=Paused  →  codes POST /api/contact : 36 429 4 500
+11:11:23  étape=1/7  poids_canary=10%  phase=Paused  →  codes POST /api/contact : 36 429 4 500
+11:11:29  étape=1/7  poids_canary=10%  phase=Paused  →  codes POST /api/contact : 36 429 4 500
+11:11:36  étape=1/7  poids_canary=0%  phase=Paused  →  codes POST /api/contact : 30 429 10 500
+11:11:42  étape=0/7  poids_canary=0%  phase=Degraded  →  codes POST /api/contact : 40 429
+Status:          ✖ Degraded
+Message:         RolloutAborted: Rollout aborted update to revision 4: Background analysis phase error/failed: Metric "taux-erreurs-5xx" assessed Failed due to failed (2) > failureLimit (1)
+Strategy:        Canary
+  Step:          0/7
+  SetWeight:     0
+  ActualWeight:  0
+Images:          localhost:8090/devsecops/devsecops-api:0148d22@sha256:99f78bf042e8a5f3d43ae4f9fa8b82634a5e1783a26a0b9ab6bc59a49096d204 (canary, stable)
+Replicas:
+  Desired:       2
+  Current:       3
+  Ready:         3
+  Available:     3
+
+NAME                                    KIND         STATUS        AGE  INFO
+⟳ api-canary                            Rollout      ✖ Degraded    19m
+├──# revision:4
+│  ├──⧉ api-canary-67768ddbbc           ReplicaSet   ✔ Healthy     80s  canary,delay:22s
+│  │  └──□ api-canary-67768ddbbc-jpk2k  Pod          ✔ Running     80s  ready:1/1
+│  └──α api-canary-67768ddbbc-4         AnalysisRun  ✖ Failed      67s  ✔ 2,✖ 2
+├──# revision:3
+│  └──⧉ api-canary-f57cc5d7f            ReplicaSet   • ScaledDown  11m  delay:passed
+├──# revision:2
+│  ├──⧉ api-canary-6667897649           ReplicaSet   ✔ Healthy     18m  stable
+│  │  ├──□ api-canary-6667897649-q74sk  Pod          ✔ Running     18m  ready:1/1
+│  │  └──□ api-canary-6667897649-s94tf  Pod          ✔ Running     15m  ready:1/1
+│  └──α api-canary-6667897649-2         AnalysisRun  ✔ Successful  18m  ✔ 10
+└──# revision:1
+   └──⧉ api-canary-756c966467           ReplicaSet   • ScaledDown  19m
