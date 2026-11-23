@@ -45,6 +45,7 @@
     "transform": {}
   },
   "overrides": {
-    "deepmerge-ts": "^8.0.0"
+    "deepmerge-ts": "^8.0.0",
+    "effect": "3.22.5"
   }
 }
