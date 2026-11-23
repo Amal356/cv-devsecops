@@ -77,6 +77,10 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 - [Étapes 234 à 237 – SLI, SLO, alerte Prometheus et runbook](47-slo-alerting/README.md)
 - [Étapes 238 à 242 – DAST OWASP ZAP et tests de charge k6 dans le pipeline](48-dast-performance/README.md)
 
+### Activité 9 – Livraison progressive, données, identité, service mesh et CI/CD sécurisée
+
+- [Étapes 243 à 248 – Progressive Delivery : Argo Rollouts (Blue/Green, Canary, rollback Prometheus) et feature flag OpenFeature](49-progressive-delivery/README.md)
+
 ## Architecture finale
 
 ```
