@@ -80,6 +80,7 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 ### Activité 9 – Livraison progressive, données, identité, service mesh et CI/CD sécurisée
 
 - [Étapes 243 à 248 – Progressive Delivery : Argo Rollouts (Blue/Green, Canary, rollback Prometheus) et feature flag OpenFeature](49-progressive-delivery/README.md)
+- [Étapes 249 à 252 – PostgreSQL avec l'opérateur CloudNativePG : bascule automatique, sauvegarde S3 (Floci) et restauration](50-cloudnativepg/README.md)
 
 ## Architecture finale
 

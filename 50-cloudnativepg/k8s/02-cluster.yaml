@@ -1,0 +1,42 @@
+# Étape 250 : un cluster PostgreSQL géré par l'opérateur CloudNativePG.
+# 2 instances : 1 primaire (lecture/écriture) + 1 réplica en streaming (lecture seule, prête à prendre le relais).
+# L'opérateur crée tout seul : les pods, les volumes, les Services -rw / -ro / -r, le Secret de l'application,
+# la réplication, la bascule automatique et l'archivage continu des WAL vers S3 (plugin Barman Cloud).
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: portfolio-pg
+  namespace: portfolio-cnpg
+spec:
+  instances: 2
+  storage:
+    size: 1Gi
+  bootstrap:
+    initdb:
+      database: portfolio_db
+      owner: portfolio          # mot de passe généré par l'opérateur dans le Secret portfolio-pg-app
+  postgresql:
+    parameters:
+      shared_buffers: 64MB
+      max_connections: "50"
+  resources:
+    requests: { cpu: 50m, memory: 192Mi }
+    limits: { memory: 384Mi }
+  # Sécurité des pods : mêmes valeurs que les défauts de l'opérateur (UID 26 = postgres, non root, seccomp),
+  # plus le profil AppArmor "cnpg-postgres" chargé sur le nœud (voir ../apparmor/cnpg-postgres) :
+  # le profil par défaut de containerd bloque les signaux internes de PostgreSQL sur cette VM.
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 26
+    runAsGroup: 26
+    fsGroup: 26
+    seccompProfile:
+      type: RuntimeDefault
+    appArmorProfile:
+      type: Localhost
+      localhostProfile: cnpg-postgres
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: floci-s3
