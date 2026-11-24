@@ -81,6 +81,7 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 
 - [Étapes 243 à 248 – Progressive Delivery : Argo Rollouts (Blue/Green, Canary, rollback Prometheus) et feature flag OpenFeature](49-progressive-delivery/README.md)
 - [Étapes 249 à 252 – PostgreSQL avec l'opérateur CloudNativePG : bascule automatique, sauvegarde S3 (Floci) et restauration](50-cloudnativepg/README.md)
+- [Étapes 253 à 255 – Velero : sauvegarde, suppression et restauration du namespace portfolio-dev](51-velero/README.md)
 
 ## Architecture finale
 
