@@ -1,0 +1,23 @@
+# Étape 262 : règle de trafic entre 2 versions de l'API.
+# - en-tête « x-version: v2 » -> toujours la v2 (testeurs) ;
+# - sinon : 80 % v1, 20 % v2 (canary piloté par le mesh).
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata: { name: api, namespace: portfolio-mesh }
+spec:
+  host: api
+  subsets:
+    - { name: v1, labels: { version: v1 } }
+    - { name: v2, labels: { version: v2 } }
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata: { name: api, namespace: portfolio-mesh }
+spec:
+  hosts: [api]
+  http:
+    - match: [{ headers: { x-version: { exact: v2 } } }]
+      route: [{ destination: { host: api, subset: v2 } }]
+    - route:
+        - { destination: { host: api, subset: v1 }, weight: 80 }
+        - { destination: { host: api, subset: v2 }, weight: 20 }

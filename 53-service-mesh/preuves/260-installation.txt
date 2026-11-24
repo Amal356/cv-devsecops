@@ -1,0 +1,25 @@
+$ ./installer-istio.sh
+client version: 1.31.4
+✔ Istio core installed ⛵️
+✔ Istiod installed 🧠
+✔ Installation complete
+deployment "istiod" successfully rolled out
+$ ./preparer-namespace.sh
+namespace/portfolio-mesh created
+namespace/hors-mesh created
+secret/postgres-credentials created
+secret/api-secrets created
+secret/harbor-pull created
+API v1 : localhost:8090/devsecops/devsecops-api:9be84de@sha256:ea4274ecc158369242c8007b9147e79a8dd5747e22f5f80408df716fcc418f0d
+API v2 : localhost:8090/devsecops/devsecops-api:43dc626@sha256:ed78a8750787271f473e4ee1863e4ce5da37bfd792afe5efd76494ac1a1642b1
+Frontend : localhost:8090/devsecops/devsecops-portfolio:43dc626@sha256:64f472bb33d27d34e32532894f7a7e56b1a9c9765830a7f0ba640a0867bef388
+$ kubectl apply -f k8s/02-mtls.yaml
+peerauthentication.security.istio.io/default created
+peerauthentication.security.istio.io/frontend created
+destinationrule.networking.istio.io/postgres-hors-mesh created
+$ kubectl -n portfolio-mesh get pods
+NAME                       READY   STATUS    RESTARTS   AGE
+api-v1-6f4fdf6cc8-hr8t8    2/2     Running   0          36s
+api-v2-6ffd9598-czqkh      2/2     Running   0          36s
+client                     2/2     Running   0          36s
+frontend-f57d4cb8b-vr6fw   2/2     Running   0          36s

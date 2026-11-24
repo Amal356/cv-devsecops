@@ -1,0 +1,131 @@
+# Le portfolio dans le mesh : frontend -> API (2 versions : v1 = 9be84de, v2 = a314a58).
+# Les images sont injectées par preparer-namespace.sh (__API_V1__, __API_V2__, __FRONTEND__).
+apiVersion: v1
+kind: Service
+metadata: { name: postgres, namespace: portfolio-mesh }
+spec:
+  type: ExternalName
+  externalName: postgres.portfolio-dev.svc.cluster.local   # base de DEV (hors mesh)
+---
+apiVersion: v1
+kind: Service
+metadata: { name: api, namespace: portfolio-mesh, labels: { app: api } }
+spec:
+  selector: { app: api }          # les 2 versions derrière le même Service
+  ports: [{ name: http, port: 4000, targetPort: 4000 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: api-v1, namespace: portfolio-mesh, labels: { app: api, version: v1 } }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: api, version: v1 } }
+  template:
+    metadata: { labels: { app: api, version: v1 } }
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      imagePullSecrets: [{ name: harbor-pull }]
+      securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: api
+          image: __API_V1__
+          ports: [{ name: http, containerPort: 4000 }]
+          env:
+            - { name: NODE_ENV, value: production }
+            - { name: PORT, value: "4000" }
+            - { name: HOME, value: /tmp }
+            - { name: CHECKPOINT_DISABLE, value: "1" }
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: postgres-credentials, key: DATABASE_URL } }
+            - name: API_DEMO_TOKEN
+              valueFrom: { secretKeyRef: { name: api-secrets, key: API_DEMO_TOKEN } }
+          readinessProbe: { httpGet: { path: /api/health, port: http }, periodSeconds: 10 }
+          resources: { requests: { cpu: 20m, memory: 96Mi }, limits: { memory: 256Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: ["ALL"] } }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: api-v2, namespace: portfolio-mesh, labels: { app: api, version: v2 } }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: api, version: v2 } }
+  template:
+    metadata: { labels: { app: api, version: v2 } }
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      imagePullSecrets: [{ name: harbor-pull }]
+      securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: api
+          image: __API_V2__
+          ports: [{ name: http, containerPort: 4000 }]
+          env:
+            - { name: NODE_ENV, value: production }
+            - { name: PORT, value: "4000" }
+            - { name: HOME, value: /tmp }
+            - { name: CHECKPOINT_DISABLE, value: "1" }
+            - name: DATABASE_URL
+              valueFrom: { secretKeyRef: { name: postgres-credentials, key: DATABASE_URL } }
+            - name: API_DEMO_TOKEN
+              valueFrom: { secretKeyRef: { name: api-secrets, key: API_DEMO_TOKEN } }
+          readinessProbe: { httpGet: { path: /api/health, port: http }, periodSeconds: 10 }
+          resources: { requests: { cpu: 20m, memory: 96Mi }, limits: { memory: 256Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: ["ALL"] } }
+          volumeMounts: [{ name: tmp, mountPath: /tmp }]
+      volumes: [{ name: tmp, emptyDir: {} }]
+---
+apiVersion: v1
+kind: Service
+metadata: { name: frontend, namespace: portfolio-mesh, labels: { app: frontend } }
+spec:
+  selector: { app: frontend }
+  ports: [{ name: http, port: 3000, targetPort: 3000 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: frontend, namespace: portfolio-mesh, labels: { app: frontend } }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: frontend } }
+  template:
+    metadata: { labels: { app: frontend, version: v1 } }
+    spec:
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      imagePullSecrets: [{ name: harbor-pull }]
+      securityContext: { runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, seccompProfile: { type: RuntimeDefault } }
+      containers:
+        - name: frontend
+          image: __FRONTEND__
+          ports: [{ name: http, containerPort: 3000 }]
+          env:
+            - { name: API_URL, value: "http://api:4000" }     # appel frontend -> backend, chiffré par le mesh
+            - { name: NEXT_TELEMETRY_DISABLED, value: "1" }
+          readinessProbe: { httpGet: { path: /, port: http }, periodSeconds: 10, timeoutSeconds: 8 }
+          resources: { requests: { cpu: 20m, memory: 128Mi }, limits: { memory: 384Mi } }
+          securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: ["ALL"] } }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: next-cache, mountPath: /app/.next/cache }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+        - { name: next-cache, emptyDir: {} }
+---
+# Client de test DANS le mesh (avec sidecar) et client témoin HORS du mesh (sans sidecar)
+apiVersion: v1
+kind: Pod
+metadata: { name: client, namespace: portfolio-mesh, labels: { app: client } }
+spec:
+  containers:
+    - { name: curl, image: curlimages/curl:8.11.1, command: ["sleep", "infinity"] }
+---
+apiVersion: v1
+kind: Pod
+metadata: { name: client, namespace: hors-mesh, labels: { app: client } }
+spec:
+  containers:
+    - { name: curl, image: curlimages/curl:8.11.1, command: ["sleep", "infinity"] }
