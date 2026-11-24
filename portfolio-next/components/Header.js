@@ -22,6 +22,7 @@ export default function Header() {
         <Link href="/projects">Projects</Link>
         <Link href="/#experience">Experience</Link>
         <Link href="/#contact">Contact</Link>
+        <a href="/espace">Espace</a>
       </nav>
       <button id="theme" type="button" aria-label="Changer de thème" onClick={changerTheme}>
         Clair / sombre
