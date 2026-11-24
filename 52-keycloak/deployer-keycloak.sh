@@ -27,7 +27,9 @@ kubectl -n portfolio-dev create secret generic oidc-client --from-literal=OIDC_C
 
 kubectl apply -f k8s/01-keycloak.yaml
 kubectl -n keycloak rollout restart deploy/keycloak >/dev/null 2>&1 || true
-kubectl -n keycloak rollout status deploy/keycloak --timeout=6m
+kubectl -n keycloak rollout status deploy/keycloak --timeout=10m
+# Le frontend lit OIDC_CLIENT_SECRET au démarrage : on le redémarre pour prendre le nouveau secret
+kubectl -n portfolio-dev rollout restart deploy/frontend >/dev/null 2>&1 || true
 
 cat <<FIN
 
