@@ -1,0 +1,35 @@
+# Étape 252 (vérification) : une sauvegarde non testée n'est pas une sauvegarde.
+# Nouveau cluster, créé UNIQUEMENT à partir du bucket S3 (sauvegarde complète + WAL archivés).
+# Il ne contacte jamais le cluster d'origine : c'est le scénario « la base a été détruite ».
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: portfolio-pg-restaure
+  namespace: portfolio-cnpg
+spec:
+  instances: 1
+  storage:
+    size: 1Gi
+  resources:
+    requests: { cpu: 50m, memory: 192Mi }
+    limits: { memory: 384Mi }
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 26
+    runAsGroup: 26
+    fsGroup: 26
+    seccompProfile:
+      type: RuntimeDefault
+    appArmorProfile:
+      type: Localhost
+      localhostProfile: cnpg-postgres
+  bootstrap:
+    recovery:
+      source: origine
+  externalClusters:
+    - name: origine
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: floci-s3
+          serverName: portfolio-pg

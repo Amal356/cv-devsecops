@@ -1,0 +1,45 @@
+amal@ubuntu-server-26:/tmp/gitops$ kubectl -n argocd annotate application portfolio-dev portfolio-staging portfolio-prod argocd.argoproj.io/refresh=hard --overwrite
+sleep 60
+for ns in portfolio-dev portfolio-staging portfolio-prod; do
+  kubectl -n $ns rollout status deploy/postgres --timeout=4m >/dev/null
+  echo "$ns : $(kubectl -n $ns exec deploy/postgres -- cat /proc/1/attr/current 2>/dev/null)"
+done
+for ns in portfolio-dev portfolio-staging portfolio-prod; do kubectl -n $ns rollout restart deploy/api >/dev/null; done
+for ns in portfolio-dev portfolio-staging portfolio-prod; do kubectl -n $ns rollout status deploy/api --timeout=4m; done
+sleep 15
+for h in dev.portfolio.local staging.portfolio.local prod.portfolio.local; do echo "$h → HTTP $(curl -s -o /dev/null -w '%{http_code}' -H "Host: $h" http://10.0.2.15/api/health)"; done
+echo "messages en base (DEV) : $(curl -s -H 'Host: dev.portfolio.local' http://10.0.2.15/api/stats | tr -d '\n ')"
+velero backup get; velero restore get
+kubectl -n argocd get application portfolio-dev portfolio-staging portfolio-prod
+application.argoproj.io/portfolio-dev annotated
+application.argoproj.io/portfolio-staging annotated
+application.argoproj.io/portfolio-prod annotated
+portfolio-dev : cnpg-postgres//&unconfined (enforce)
+portfolio-staging : cnpg-postgres//&unconfined (enforce)
+portfolio-prod : cnpg-postgres//&unconfined (enforce)
+Waiting for deployment "api" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "api" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "api" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "api" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "api" rollout to finish: 1 old replicas are pending termination...
+deployment "api" successfully rolled out
+Waiting for deployment "api" rollout to finish: 1 old replicas are pending termination...
+deployment "api" successfully rolled out
+Waiting for deployment "api" rollout to finish: 2 out of 3 new replicas have been updated...
+Waiting for deployment "api" rollout to finish: 2 out of 3 new replicas have been updated...
+Waiting for deployment "api" rollout to finish: 2 out of 3 new replicas have been updated...
+Waiting for deployment "api" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "api" rollout to finish: 1 old replicas are pending termination...
+deployment "api" successfully rolled out
+dev.portfolio.local → HTTP 200
+staging.portfolio.local → HTTP 200
+prod.portfolio.local → HTTP 200
+messages en base (DEV) : {"messages":1}
+NAME              STATUS      ERRORS   WARNINGS   CREATED                         EXPIRES   STORAGE LOCATION   QUEUE POSITION   SELECTOR
+portfolio-dev-1   Completed   0        1          2026-11-24 08:45:06 +0000 UTC   29d       default                             <none>
+NAME                           BACKUP            STATUS      STARTED                         COMPLETED                       ERRORS   WARNINGS   CREATED                         SELECTOR
+portfolio-dev-restauration-1   portfolio-dev-1   Completed   2026-11-24 08:49:53 +0000 UTC   2026-11-24 08:50:35 +0000 UTC   0        1          2026-11-24 08:49:53 +0000 UTC   <none>
+NAME                SYNC STATUS   HEALTH STATUS
+portfolio-dev       Synced        Healthy
+portfolio-staging   Synced        Healthy
+portfolio-prod      Synced        Healthy

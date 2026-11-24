@@ -38,6 +38,8 @@ spec:
       labels: { app: flagd }
     spec:
       automountServiceAccountToken: false
+      # Sans ça, Kubernetes injecte FLAGD_PORT=tcp://… (service links) que flagd lit comme son port : crash
+      enableServiceLinks: false
       securityContext:
         runAsNonRoot: true
         runAsUser: 65532

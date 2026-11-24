@@ -1,0 +1,25 @@
+# Étape 252 : où envoyer les sauvegardes. Le plugin Barman Cloud (méthode recommandée depuis
+# CloudNativePG 1.26) lit cette ressource. Le "S3" est Floci, l'émulateur AWS déployé dans le cluster
+# (activité 7, namespace floci). Les identifiants sont dans le Secret floci-s3, créé à la main :
+# jamais dans Git.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: floci-s3
+  namespace: portfolio-cnpg
+spec:
+  retentionPolicy: "7d"
+  configuration:
+    destinationPath: s3://cnpg-backups/
+    endpointURL: http://floci.floci.svc.cluster.local:4566
+    s3Credentials:
+      accessKeyId:
+        name: floci-s3
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: floci-s3
+        key: ACCESS_SECRET_KEY
+    wal:
+      compression: gzip
+    data:
+      compression: gzip
