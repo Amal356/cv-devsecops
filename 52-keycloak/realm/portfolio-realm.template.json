@@ -1,0 +1,69 @@
+{
+  "realm": "portfolio",
+  "displayName": "DevSecOps Portfolio – Amal Jemli",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "roles": {
+    "realm": [
+      { "name": "user", "description": "Visiteur connecté : voit son profil" },
+      { "name": "developer", "description": "Développeur : informations techniques de l'API" },
+      { "name": "admin", "description": "Administrateur : lit les messages de contact" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "portfolio-web",
+      "name": "Portfolio Next.js",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "__CLIENT_SECRET__",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://dev.portfolio.local:8088/auth/callback"],
+      "webOrigins": ["http://dev.portfolio.local:8088"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://dev.portfolio.local:8088/espace"
+      },
+      "protocolMappers": [
+        {
+          "name": "audience-portfolio-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.custom.audience": "portfolio-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "alice-user", "email": "alice@example.test", "firstName": "Alice", "lastName": "Visiteuse",
+      "enabled": true, "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "__PWD_ALICE__", "temporary": false }],
+      "realmRoles": ["user"]
+    },
+    {
+      "username": "bob-developer", "email": "bob@example.test", "firstName": "Bob", "lastName": "Développeur",
+      "enabled": true, "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "__PWD_BOB__", "temporary": false }],
+      "realmRoles": ["user", "developer"]
+    },
+    {
+      "username": "chloe-admin", "email": "chloe@example.test", "firstName": "Chloé", "lastName": "Admin",
+      "enabled": true, "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "__PWD_CHLOE__", "temporary": false }],
+      "realmRoles": ["user", "developer", "admin"]
+    }
+  ]
+}
