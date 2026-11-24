@@ -83,6 +83,7 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 - [Étapes 249 à 252 – PostgreSQL avec l'opérateur CloudNativePG : bascule automatique, sauvegarde S3 (Floci) et restauration](50-cloudnativepg/README.md)
 - [Étapes 253 à 255 – Velero : sauvegarde, suppression et restauration du namespace portfolio-dev](51-velero/README.md)
 - [Étapes 256 à 259 – Keycloak : realm et client OIDC, connexion dans le portfolio, rôles user/developer/admin et routes API protégées](52-keycloak/README.md)
+- [Étapes 260 à 263 – Service mesh Istio (comparé à Linkerd) : mTLS STRICT entre frontend et API, routage entre 2 versions](53-service-mesh/README.md)
 
 ## Architecture finale
 

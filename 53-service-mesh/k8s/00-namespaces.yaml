@@ -1,0 +1,16 @@
+# Activité 9, partie 51 : service mesh Istio.
+# istio-injection=enabled : chaque pod reçoit automatiquement un proxy Envoy (sidecar).
+# Remarque : l'init container istio-init a besoin de NET_ADMIN (règles iptables), refusé par les niveaux
+# Pod Security baseline/restricted. En production, on installe le plugin Istio CNI pour s'en passer.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: portfolio-mesh
+  labels:
+    istio-injection: enabled
+---
+# Témoin SANS sidecar : sert à prouver que l'API refuse le trafic non chiffré (mTLS STRICT)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hors-mesh

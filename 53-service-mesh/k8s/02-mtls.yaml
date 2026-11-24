@@ -1,0 +1,24 @@
+# Étape 261 : mTLS entre frontend et backend.
+# STRICT pour tout le namespace : un pod n'accepte QUE du trafic chiffré et authentifié par un
+# certificat du mesh (identité SPIFFE délivrée par istiod, renouvelée automatiquement).
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: portfolio-mesh }
+spec:
+  mtls: { mode: STRICT }
+---
+# Exception : le frontend reçoit aussi le trafic de Traefik (hors mesh) -> PERMISSIVE pour lui seul.
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: frontend, namespace: portfolio-mesh }
+spec:
+  selector: { matchLabels: { app: frontend } }
+  mtls: { mode: PERMISSIVE }
+---
+# PostgreSQL de DEV n'a pas de sidecar : la connexion sortante vers lui reste en clair (comme avant le mesh).
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata: { name: postgres-hors-mesh, namespace: portfolio-mesh }
+spec:
+  host: postgres.portfolio-dev.svc.cluster.local
+  trafficPolicy: { tls: { mode: DISABLE } }
