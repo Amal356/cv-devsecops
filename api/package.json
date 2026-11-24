@@ -18,8 +18,8 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1161.0",
-    "@aws-sdk/client-sqs": "^3.1161.0",
+    "@aws-sdk/client-s3": "^3.1170.0",
+    "@aws-sdk/client-sqs": "^3.1170.0",
     "@openfeature/ofrep-provider": "0.2.5",
     "@openfeature/server-sdk": "1.23.0",
     "@opentelemetry/api": "^1.10.0",
@@ -30,7 +30,7 @@
     "@prisma/instrumentation": "^6.19.3",
     "cors": "^2.8.6",
     "express": "^5.3.0",
-    "express-rate-limit": "^8.7.1",
+    "express-rate-limit": "^8.7.4",
     "helmet": "^8.3.0",
     "jose": "6.2.18",
     "prisma": "6.19.3",
@@ -39,7 +39,7 @@
   },
   "devDependencies": {
     "jest": "^30.5.2",
-    "supertest": "^7.3.1"
+    "supertest": "^7.3.2"
   },
   "jest": {
     "testEnvironment": "node",
