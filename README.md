@@ -84,6 +84,7 @@ Dépôt GitHub : https://github.com/Amal356/cv-devsecops
 - [Étapes 253 à 255 – Velero : sauvegarde, suppression et restauration du namespace portfolio-dev](51-velero/README.md)
 - [Étapes 256 à 259 – Keycloak : realm et client OIDC, connexion dans le portfolio, rôles user/developer/admin et routes API protégées](52-keycloak/README.md)
 - [Étapes 260 à 263 – Service mesh Istio (comparé à Linkerd) : mTLS STRICT entre frontend et API, routage entre 2 versions](53-service-mesh/README.md)
+- [Étapes 264 à 268 – CI/CD sécurisée : jeton OIDC éphémère au lieu d'un secret statique, runners GitHub Actions éphémères dans K3s (ARC) à moindre privilège](54-cicd-securisee/README.md)
 
 ## Architecture finale
 
