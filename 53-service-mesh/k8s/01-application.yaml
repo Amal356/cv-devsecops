@@ -120,12 +120,24 @@ apiVersion: v1
 kind: Pod
 metadata: { name: client, namespace: portfolio-mesh, labels: { app: client } }
 spec:
+  automountServiceAccountToken: false
+  securityContext: { runAsNonRoot: true, runAsUser: 100, runAsGroup: 101, seccompProfile: { type: RuntimeDefault } }
   containers:
-    - { name: curl, image: curlimages/curl:8.11.1, command: ["sleep", "infinity"] }
+    - name: curl
+      image: curlimages/curl:8.11.1
+      command: ["sleep", "infinity"]
+      resources: { requests: { cpu: 5m, memory: 16Mi }, limits: { memory: 64Mi } }
+      securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: ["ALL"] } }
 ---
 apiVersion: v1
 kind: Pod
 metadata: { name: client, namespace: hors-mesh, labels: { app: client } }
 spec:
+  automountServiceAccountToken: false
+  securityContext: { runAsNonRoot: true, runAsUser: 100, runAsGroup: 101, seccompProfile: { type: RuntimeDefault } }
   containers:
-    - { name: curl, image: curlimages/curl:8.11.1, command: ["sleep", "infinity"] }
+    - name: curl
+      image: curlimages/curl:8.11.1
+      command: ["sleep", "infinity"]
+      resources: { requests: { cpu: 5m, memory: 16Mi }, limits: { memory: 64Mi } }
+      securityContext: { allowPrivilegeEscalation: false, readOnlyRootFilesystem: true, capabilities: { drop: ["ALL"] } }

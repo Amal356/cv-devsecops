@@ -1,0 +1,27 @@
+# Activité 9, partie 52 : runners GitHub Actions dans Kubernetes (ARC, gha-runner-scale-set 0.15.1).
+# Les workflows les utilisent avec « runs-on: arc-cv-devsecops ».
+githubConfigUrl: https://github.com/Amal356/cv-devsecops
+githubConfigSecret: arc-github-pat        # Secret créé à la main (jeton à droits minimaux), jamais dans Git
+runnerScaleSetName: arc-cv-devsecops
+minRunners: 0                              # aucun runner qui attend : un pod est créé pour CHAQUE job
+maxRunners: 2                              # puis détruit à la fin (runner éphémère)
+# Pas de containerMode : pas de Docker-in-Docker (qui exigerait un conteneur privilégié)
+template:
+  spec:
+    automountServiceAccountToken: false    # le job ne reçoit aucun jeton pour l'API Kubernetes
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1001
+      runAsGroup: 1001
+      fsGroup: 1001
+      seccompProfile: { type: RuntimeDefault }
+    containers:
+      - name: runner
+        image: ghcr.io/actions/actions-runner:2.338.2
+        command: ["/home/runner/run.sh"]
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities: { drop: ["ALL"] }
+        resources:
+          requests: { cpu: 100m, memory: 256Mi }
+          limits: { cpu: "1", memory: 1Gi }

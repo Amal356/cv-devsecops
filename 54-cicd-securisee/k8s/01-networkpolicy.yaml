@@ -1,0 +1,27 @@
+# Moindre privilège réseau pour les runners :
+#   - aucune connexion entrante ;
+#   - sortie autorisée seulement vers le DNS du cluster et vers Internet en HTTPS (GitHub) ;
+#   - INTERDIT : les pods (10.42.0.0/16), les Services (10.43.0.0/16) et le réseau de la VM (10.0.2.0/24 :
+#     API Kubernetes, Harbor, Jenkins). Un job compromis ne peut donc pas attaquer le cluster.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: runners-moindre-privilege
+  namespace: arc-runners
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: kube-system } }
+          podSelector: { matchLabels: { k8s-app: kube-dns } }
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except: [10.42.0.0/16, 10.43.0.0/16, 10.0.2.0/24, 169.254.0.0/16]
+      ports:
+        - { protocol: TCP, port: 443 }
