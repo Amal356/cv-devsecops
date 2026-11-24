@@ -95,3 +95,8 @@ footer { padding-top: 3rem; padding-bottom: 2rem; color: var(--muted); font-size
 .form-erreur { color: #c0392b; }
 :root[data-theme="dark"] .form-erreur { color: #f08a7e; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .form-erreur { color: #f08a7e; } }
+
+/* Activité 9, partie 50 : tableau des accès de l'espace connecté */
+.acces { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
+.acces th, .acces td { border: 1px solid var(--line); padding: .5rem .7rem; text-align: left; vertical-align: top; }
+.acces pre { margin: .4rem 0 0; font-size: .8rem; white-space: pre-wrap; color: var(--muted); }
