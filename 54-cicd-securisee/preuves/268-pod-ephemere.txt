@@ -1,0 +1,11 @@
+# Étape 268 – Runner éphémère : un pod créé pour le job, puis détruit (run #1 du workflow « Démo OIDC et runners ARC », 24/11)
+$ kubectl -n arc-runners get pods -w
+NAME                            READY   STATUS              RESTARTS   AGE
+arc-cv-devsecops-runner-mj25d   0/1     Pending             0          0s
+arc-cv-devsecops-runner-mj25d   0/1     ContainerCreating   0          0s
+arc-cv-devsecops-runner-mj25d   1/1     Running             0          2m1s
+arc-cv-devsecops-runner-mj25d   0/1     Completed           0          2m18s
+arc-cv-devsecops-runner-mj25d   0/1     Terminating         0          2m18s
+
+# Avant le job, le listener ne demande aucun runner (minRunners: 0) :
+msg="Calculated target runner count" "assigned job"=0 decision=0 min=0 max=2 currentRunnerCount=0
