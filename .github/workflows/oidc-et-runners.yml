@@ -1,0 +1,50 @@
+# Activité 9, partie 52 : démonstration OIDC (jeton éphémère) et runner Kubernetes à moindre privilège.
+# Lancement manuel uniquement (workflow_dispatch) : jamais déclenché par une PR venant d'un fork,
+# car le job 2 tourne sur un runner auto-hébergé, dans notre cluster.
+name: Démo OIDC et runners ARC
+
+on:
+  workflow_dispatch:
+
+permissions: {}          # par défaut : AUCUNE permission pour le GITHUB_TOKEN
+
+jobs:
+  oidc:
+    name: Jeton OIDC éphémère (au lieu d'un secret statique)
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write    # la SEULE permission : demander un jeton OIDC à GitHub
+    steps:
+      - name: Demander un jeton OIDC et afficher ses informations (jamais le jeton)
+        run: |
+          set -euo pipefail
+          JETON=$(curl -sS -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=portfolio-demo" | jq -r .value)
+          echo "::add-mask::${JETON}"
+          python3 - "$JETON" <<'PY'
+          import base64, json, sys, datetime
+          p = sys.argv[1].split(".")[1]; p += "=" * (-len(p) % 4)
+          c = json.loads(base64.urlsafe_b64decode(p))
+          for k in ("iss", "aud", "sub", "repository", "ref", "event_name", "actor", "job_workflow_ref", "runner_environment"):
+              print(f"{k:20} : {c.get(k)}")
+          print(f"{'valable':20} : {c['exp'] - c['iat']} secondes (expire à {datetime.datetime.fromtimestamp(c['exp'], datetime.UTC):%H:%M:%S} UTC)")
+          PY
+
+  runner-kubernetes:
+    name: Runner éphémère dans Kubernetes (ARC)
+    needs: oidc
+    runs-on: arc-cv-devsecops
+    permissions:
+      contents: read
+    steps:
+      - name: Vérifier le moindre privilège du runner
+        run: |
+          echo "pod runner         : $(hostname)"
+          echo "utilisateur        : $(id)"
+          if [ -e /var/run/secrets/kubernetes.io/serviceaccount/token ]; then echo "jeton Kubernetes   : ⚠ PRÉSENT"; else echo "jeton Kubernetes   : ✔ absent"; fi
+          echo "docker             : $(command -v docker || echo '✔ absent (pas de Docker-in-Docker)')"
+          t() { if timeout 5 bash -c "</dev/tcp/$1/$2" 2>/dev/null; then echo "OUVERT"; else echo "BLOQUÉ"; fi; }
+          echo "github.com:443     : $(t github.com 443)   (attendu : OUVERT)"
+          echo "API portfolio-dev  : $(t api.portfolio-dev.svc.cluster.local 4000)   (attendu : BLOQUÉ)"
+          echo "API Kubernetes     : $(t kubernetes.default.svc 443)   (attendu : BLOQUÉ)"
+          echo "Harbor (VM)        : $(t 10.0.2.15 8090)   (attendu : BLOQUÉ)"

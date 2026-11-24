@@ -1,0 +1,9 @@
+# Activité 9, partie 52 : namespace des runners GitHub Actions (ARC).
+# Pod Security « restricted » : les runners ne peuvent être ni root, ni privilégiés, ni ajouter de capacités.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: arc-runners
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
