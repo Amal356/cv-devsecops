@@ -129,7 +129,7 @@ Ensemble, ils permettent de restaurer la base à **n'importe quelle seconde pass
 | Compteur de refus AppArmor négatif (`-19`) | `dmesg` est une mémoire circulaire : les anciennes lignes s'effacent | preuve directe à la place : `/proc/1/attr/current` affiche `cnpg-postgres//&unconfined (enforce)`, et le cluster démarre |
 | `destination=` vide dans le `Backup` | avec le plugin, la destination est décrite dans l'`ObjectStore` | preuve par le contenu du bucket |
 
-**La même cause AppArmor explique la panne du 23/11** sur les `Deployment` PostgreSQL de DEV, STAGING et PROD (`could not signal for checkpoint: Permission denied`). **Amélioration à faire :** leur appliquer aussi le profil `cnpg-postgres`, dans le dépôt GitOps, ou les remplacer par un `Cluster` CloudNativePG.
+**La même cause AppArmor explique la panne du 23/11** sur les `Deployment` PostgreSQL de DEV, STAGING et PROD (`could not signal for checkpoint: Permission denied`). **Corrigé le 24/11** (partie 49) : le profil `cnpg-postgres` est ajouté à [`base/postgres.yaml`](https://github.com/Amal356/devsecops-portfolio-gitops/pull/1) du dépôt GitOps, et Argo CD l'a appliqué aux 3 environnements.
 
 ## Limites de cette démonstration
 
