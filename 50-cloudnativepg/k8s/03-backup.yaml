@@ -1,0 +1,28 @@
+# Étape 252 : sauvegarde complète à la demande (base backup), envoyée dans le bucket S3 de Floci.
+# Avec les WAL archivés en continu, elle permet une restauration à n'importe quel instant (PITR).
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: portfolio-pg-sauvegarde-1
+  namespace: portfolio-cnpg
+spec:
+  cluster:
+    name: portfolio-pg
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+---
+# Sauvegarde automatique chaque nuit à 2 h (format cron à 6 champs : secondes en premier).
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: portfolio-pg-nuit
+  namespace: portfolio-cnpg
+spec:
+  schedule: "0 0 2 * * *"
+  backupOwnerReference: self
+  cluster:
+    name: portfolio-pg
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

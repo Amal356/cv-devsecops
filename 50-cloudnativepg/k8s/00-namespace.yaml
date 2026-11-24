@@ -1,0 +1,10 @@
+# Activité 9, partie 48 : namespace de démonstration CloudNativePG.
+# "baseline" appliqué, "restricted" en avertissement : on voit si les pods gérés par l'opérateur
+# respectent aussi le niveau le plus strict, sans bloquer la démonstration.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: portfolio-cnpg
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/warn: restricted

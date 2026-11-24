@@ -1,0 +1,46 @@
+# Activité 9, partie 48 : profil AppArmor pour les pods PostgreSQL de CloudNativePG.
+#
+# Problème : sur cette VM (Ubuntu 26.04, noyau 7.0, AppArmor 5), les processus des conteneurs portent
+# le label empilé "cri-containerd.apparmor.d//&unconfined". Le profil par défaut de containerd n'autorise
+# les signaux qu'entre processus de label "cri-containerd.apparmor.d" : les signaux internes de PostgreSQL
+# (SIGURG pour réveiller un processus, SIGTERM/SIGINT de pg_ctl, signal au checkpointer) sont refusés
+# (dmesg : apparmor="DENIED" operation="signal" peer="cri-containerd.apparmor.d//&unconfined").
+#
+# Solution ciblée : même contenu que le profil par défaut des conteneurs (docker-default / cri-containerd),
+# avec une seule différence : les signaux sont autorisés. Ils restent limités aux processus visibles
+# depuis le conteneur (espace de noms PID isolé).
+#
+# Installation : sudo cp cnpg-postgres /etc/apparmor.d/ && sudo apparmor_parser -r /etc/apparmor.d/cnpg-postgres
+#include <tunables/global>
+
+profile cnpg-postgres flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  network,
+  capability,
+  file,
+  umount,
+
+  # La seule différence avec le profil par défaut : signaux autorisés (au lieu de "peer=<même profil>")
+  signal,
+
+  deny @{PROC}/* w,
+  deny @{PROC}/{[^1-9],[^1-9][^0-9],[^1-9s][^0-9y][^0-9s],[^1-9][^0-9][^0-9][^0-9/]*}/** w,
+  deny @{PROC}/sys/[^k]** w,
+  deny @{PROC}/sys/kernel/{?,??,[^s][^h][^m]**} w,
+  deny @{PROC}/sysrq-trigger rwklx,
+  deny @{PROC}/kcore rwklx,
+
+  deny mount,
+
+  deny /sys/[^f]*/** wklx,
+  deny /sys/f[^s]*/** wklx,
+  deny /sys/fs/[^c]*/** wklx,
+  deny /sys/fs/c[^g]*/** wklx,
+  deny /sys/fs/cg[^r]*/** wklx,
+  deny /sys/firmware/** rwklx,
+  deny /sys/devices/virtual/powercap/** rwklx,
+  deny /sys/kernel/security/** rwklx,
+
+  ptrace (trace,read,tracedby,readby) peer=cnpg-postgres,
+}
